@@ -1660,10 +1660,10 @@ $id("downloadBtn").addEventListener("click", async () => {
   const folder = $id("exportFolder").value.trim() || "XX";
   if (!window.JSZip) {
     const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    script.src = "/tools/vendor/jszip/jszip.min.js";   // bundled, v3.10.1 — no CDN
     document.head.appendChild(script);
     await new Promise((res, rej) => { script.onload = res; script.onerror = rej; }).catch(() => {});
-    if (!window.JSZip) { showToast("Couldn't load the ZIP library — try Save to folder"); return; }
+    if (!window.JSZip) { showToast("Couldn’t load the ZIP library — try Save to folder"); return; }
   }
   showToast("Building ZIP…");
   const zip = new window.JSZip();

@@ -10,37 +10,17 @@
   body { padding: 90px 16px 40px; min-height: 100vh; }
   .hub-wrap { max-width: 1180px; margin: 0 auto; }
 
-  .hub-intro { margin: 22px 0 26px; font-size: 15px; line-height: 1.5; max-width: 560px; }
-  .hub-intro span { color: var(--muted); }
-  .hub-intro a { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
-  .hub-intro a:hover { opacity: 0.5; }
-
   /* Cards: flat tone panels. Every card is the whole click target. */
   .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 
   .tool-card {
-    position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 150px;
+    position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 120px;
     padding: 16px 16px 14px; border-radius: var(--panel-radius); background: var(--surface);
-    transition: background 200ms ease, transform 280ms var(--ease-out);
     animation: cardIn 300ms var(--ease-out) both;
   }
-  .tool-card:hover { background: color-mix(in srgb, var(--surface) 100%, var(--fg) 4%); }
-  .tool-card:active { transform: scale(0.99); }
   .tool-card.unavailable { opacity: 0.45; pointer-events: none; }
 
-  .tool-top { display: flex; align-items: center; justify-content: space-between; }
-  .tool-icon {
-    width: var(--pill-h); height: var(--pill-h); border-radius: var(--r-pill); background: var(--tone);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .tool-icon svg { width: 15px; height: 15px; stroke: var(--fg); fill: none; stroke-width: 1.6;
-    stroke-linecap: round; stroke-linejoin: round; }
-  .tool-arrow { width: 13px; height: 13px; color: var(--muted); transition: color 200ms, transform 280ms var(--ease-out); }
-  .tool-card:hover .tool-arrow { color: var(--fg); transform: translate(2px, -2px); }
-
-  .tool-card h2 { margin: 6px 0 0; font-size: 15px; font-weight: 400; }
-  .tool-desc { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted);
-    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .tool-card h2 { margin: 0; font-size: 15px; font-weight: 400; }
   .tool-foot { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px;
     border-radius: 8px; background: var(--tone); font-size: 11.5px; color: var(--fg); }
@@ -49,12 +29,6 @@
 
   @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-  footer {
-    margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--border);
-    font-size: 12.5px; color: var(--muted); line-height: 1.7;
-    display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap;
-  }
-  footer code { font: 11.5px var(--mono); background: var(--tone); padding: 1px 6px; border-radius: 5px; }
 </style>
 <link rel="stylesheet" href="/tools/skin.css"><!-- last: the shared look wins -->
 </head>
@@ -151,8 +125,7 @@ const TOOLS=[
     const chips=['<span class="chip">'+t.tag+'</span>'];
     if(state) chips.push('<span class="chip '+(state==="Local engine"?"ok":"warn")+'"><i class="dot"></i>'+state+'</span>');
     wrap.innerHTML=
-      '<div class="tool-top"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="'+t.icon+'"/></svg></span>'+
-      '<svg class="tool-arrow" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+      
       '<h2>'+t.title+'</h2>'+
       '<div class="tool-foot">'+chips.join("")+'</div>';
     grid.appendChild(wrap);
