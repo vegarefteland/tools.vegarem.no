@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/shared.css">
 <style>
   body { padding: 90px 16px 40px; min-height: 100vh; }
-  .hub-wrap { max-width: 1180px; margin: 0 auto; }
+  .hub-wrap { margin: 0; }   /* full width: lines up with the nav bar, 16px from each edge */
 
   /* Cards: flat tone panels. Every card is the whole click target. */
   .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
@@ -20,7 +20,8 @@
   }
   .tool-card.unavailable { opacity: 0.45; pointer-events: none; }
 
-  .tool-card h2 { margin: 0; font-size: 15px; font-weight: 400; }
+  .tool-card h2 { margin: 0; padding-right: 24px; font-size: 15px; font-weight: 400; }
+  .tool-arrow { position: absolute; top: 18px; right: 16px; width: 13px; height: 13px; color: var(--muted); }
   .tool-foot { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px;
     border-radius: 8px; background: var(--tone); font-size: 11.5px; color: var(--fg); }
@@ -125,7 +126,7 @@ const TOOLS=[
     const chips=['<span class="chip">'+t.tag+'</span>'];
     if(state) chips.push('<span class="chip '+(state==="Local engine"?"ok":"warn")+'"><i class="dot"></i>'+state+'</span>');
     wrap.innerHTML=
-      
+      '<svg class="tool-arrow" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'+
       '<h2>'+t.title+'</h2>'+
       '<div class="tool-foot">'+chips.join("")+'</div>';
     grid.appendChild(wrap);
