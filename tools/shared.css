@@ -1,0 +1,202 @@
+/* ================================================================
+   Studio — shared design system, part 1 of 2: tokens, base, nav.
+
+   Mirrors vegarem.no exactly (index.html <style>, "Tokens"). When the
+   site changes, change it here first: every tool and the hub read these
+   variables. Part 2 is skin.css, which is loaded AFTER each tool's own
+   styles and restyles the shared component vocabulary.
+
+   The full written spec is "Design Guidelines.pdf" in the Studio folder.
+   ================================================================ */
+
+/* Geist, self-hosted — the same variable file the site ships (v1.7.2,
+   100–900 in one 68 KB file). Licence in tools/vendor/fonts/. */
+@font-face {
+  font-family: 'Geist';
+  src: url('/tools/vendor/fonts/Geist-Variable.woff2') format('woff2-variations'),
+       url('/tools/vendor/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ── Site tokens (1:1 with vegarem.no) ───────────────────────── */
+  --bg:           #ffffff;
+  --fg:           #0a0a0a;
+  --nav-fg:       #0a0a0a;
+  --muted:        #999999;
+  --border:       #e8e8e8;
+  --tag-bg:       #0a0a0a;
+  --tag-fg:       #ffffff;
+  --nav-bg:       rgba(255, 255, 255, 0.88);
+  --pill-bg:      rgba(241, 241, 241, 0.72);   /* a shade darker than the page */
+  --pill-solid:   #e7e9ee;
+  --placeholder:  #f5f5f5;
+  --pill-round:   0.333;   /* corner radius as a share of height */
+  --pill-h:       30px;    /* every small pill and round button */
+  --nav-h:        42px;
+  --gap:          6px;     /* between media */
+  --inset:        10px;    /* pills floating on media sit this far in */
+  --media-radius: 8px;     /* every image, video and card */
+  --font:         'Geist', system-ui, -apple-system, sans-serif;
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --nav-ease:     cubic-bezier(0.76, 0, 0.24, 1);
+  --nav-dur:      400ms;
+  --theme-transition: 420ms ease;
+  --glass:        blur(22px) saturate(1.6);
+
+  /* ── Tool extensions — what a tool needs that a portfolio doesn't ─ */
+  --pill-ink:       var(--nav-fg);
+  --pill-ink-quiet: color-mix(in srgb, var(--pill-ink) 58%, transparent);
+  --surface:      #f5f5f5;                 /* panels: flat tone, no outline */
+  --tone:         rgba(0, 0, 0, 0.055);    /* buttons, fields, tracks — on any surface */
+  --tone-strong:  rgba(0, 0, 0, 0.11);
+  --track:        rgba(10, 10, 10, 0.18);  /* slider rails, dividers on tone */
+  --panel-radius: 16px;                    /* the site's info panel */
+  --r-pill:       calc(var(--pill-h) * var(--pill-round));   /* = 10px */
+  --r-nav:        calc(var(--nav-h) * var(--pill-round));    /* = 14px */
+  --mono:         ui-monospace, 'SF Mono', Menlo, monospace;
+  --danger:       #d9534f;
+
+  /* Compat: names older tool CSS still reads. Shadows are gone on the
+     site — surfaces read by tone alone — so the hover shadow is nothing. */
+  --radius:       var(--r-pill);
+  --hover-shadow: 0 0 0 transparent;
+}
+
+html[data-theme="dark"] {
+  --bg:           #0d0d0d;
+  --fg:           #efefef;
+  --nav-fg:       #efefef;
+  --muted:        #606060;
+  --border:       #242424;
+  --tag-bg:       #efefef;
+  --tag-fg:       #0d0d0d;
+  --nav-bg:       rgba(13, 13, 13, 0.88);
+  --pill-bg:      rgba(30, 30, 30, 0.72);      /* a shade lighter than the page */
+  --pill-solid:   #3a3d44;
+  --placeholder:  #1a1a1a;
+
+  --surface:      #151515;
+  --tone:         rgba(255, 255, 255, 0.07);
+  --tone-strong:  rgba(255, 255, 255, 0.13);
+  --track:        rgba(239, 239, 239, 0.2);
+}
+
+/* ─── Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  /* The site's tracking. Set at 16px it computes to -0.192px and
+     inherits as that, exactly as on vegarem.no. */
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--theme-transition), color var(--theme-transition);
+}
+
+a { color: inherit; text-decoration: none; }
+strong, b { font-weight: 600; }
+button, input, select, textarea { font-family: inherit; letter-spacing: inherit; }
+::selection { background: var(--fg); color: var(--bg); }
+
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--tone-strong) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+
+/* ─── Nav — the site's top bar ──────────────────────────────────
+   One 42px glass bar, 16px from the edges; the glass is drawn by
+   ::before so whatever sits inside stays clear. Markup every tool uses:
+
+     <div class="hub-nav">
+       <div class="hub-pill"> <a href="/">Studio</a> <a class="active" …>Tool</a> … </div>
+       [<div class="nav-actions"> tool buttons </div>]   ← optional
+       <button class="theme-toggle-btn"> <svg/> </button>
+     </div>
+
+   The pill reads as a breadcrumb: "Studio" (quiet, the way home) then the
+   current tool at full ink. Other tool links in the markup are hidden —
+   the hub is where you switch tools. A tool may put its own actions in
+   .nav-actions, so there is only ever ONE bar on screen. */
+.hub-nav {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  height: var(--nav-h);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 0 21px;
+}
+.hub-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--pill-bg);
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+  border-radius: var(--r-nav);
+  transition: background var(--theme-transition);
+}
+
+.hub-pill {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 400;
+}
+.hub-pill a { color: var(--pill-ink); }
+.hub-pill a:first-child { color: var(--pill-ink-quiet); transition: color 200ms ease; }
+.hub-pill a:first-child:hover, .hub-pill a:first-child.active { color: var(--pill-ink); }
+.hub-pill a:not(:first-child):not(.active), .hub-pill .sep { display: none; }
+.hub-pill .crumb-extra { color: var(--pill-ink-quiet); font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; }
+
+.nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-actions::-webkit-scrollbar { display: none; }
+
+.theme-toggle-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--pill-ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 200ms ease;
+}
+.nav-actions + .theme-toggle-btn { margin-left: 0; }
+.theme-toggle-btn:hover { opacity: 0.7; }
+.theme-toggle-btn svg { width: 17px; height: 17px; }

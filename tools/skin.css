@@ -1,0 +1,225 @@
+/* ================================================================
+   Studio — shared design system, part 2 of 2: component skin.
+
+   Loaded LAST in every tool (after the tool's own <style>), so the look
+   of the shared vocabulary is decided once, here, in vegarem.no's terms:
+
+     · flat — surfaces read by tone, not outline or shadow
+     · ⅓ rounding — every pill/button radius is a third of its height
+     · Geist 300/400/600, no uppercase tracking-labels
+     · hover fades (opacity), it never lifts
+
+   Every selector starts with :root so it outranks a tool's own rule of
+   the same shape. Only LOOK is set here — colour, tone, radius, type
+   treatment. Size and layout stay with each tool.
+   ================================================================ */
+
+/* ─── Panels & cards: flat tone, the site's 16px panel corner ─── */
+:root :is(.panel, .sidebar, .card, .cover-section, .arrange-preview, .bar,
+          .image-bar, .settings, .preset-section .preset-card, .file-card, .jump,
+          .look-body, .log-box, .legend) {
+  border-color: transparent;
+  box-shadow: none;
+}
+:root :is(.panel, .sidebar, .card, .bar, .image-bar, .file-card, .settings) {
+  background: var(--surface);
+}
+:root :is(.panel, .sidebar, .card, .settings) { border-radius: var(--panel-radius); }
+:root :is(.file-card, .bar, .image-bar, .jump) { border-radius: 12px; }
+
+/* Media inside tools keeps the site's media corner. */
+:root :is(.stage, .preview-canvas-wrap, .preview-wrap, .thumb, .file-thumb,
+          .img-cell, .history canvas) { border-radius: var(--media-radius); }
+
+/* ─── Page heads: the site sets titles light, not bold ───────── */
+:root .page-head h1 { font-weight: 400; letter-spacing: -0.02em; }
+:root .page-head p { color: var(--muted); }
+
+/* ─── Labels: no uppercase micro-type — quiet sentence case ───── */
+:root :is(.h, .section-label, .row-label, .field label, .export-field label,
+          .preset-group-label, .arrange-preview-label, .cover-section-header,
+          .desc-preview-header span, details.sec > summary, .stat > span) {
+  text-transform: none;
+  letter-spacing: inherit;
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+:root details.sec > summary:hover { color: var(--fg); }
+:root .field label .val { color: var(--fg); font-weight: 400; }
+
+/* Section heading pill — the site's .section-tag, for new work. */
+.section-tag {
+  display: inline-flex;
+  align-items: center;
+  height: var(--pill-h);
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: var(--pill-bg);
+  color: var(--pill-ink);
+  font-size: 12.5px;
+  font-weight: 400;
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+}
+
+/* ─── Dividers ────────────────────────────────────────────────── */
+:root :is(.sep-line, .divider) { background: var(--border); }
+
+/* ─── Buttons: tone pill, ⅓ corners, fade on hover ───────────── */
+:root :is(.pill-btn, .btn) {
+  min-height: var(--pill-h);
+  padding-top: 0;
+  padding-bottom: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--tone);
+  color: var(--fg);
+  font-weight: 400;
+  font-size: 12.5px;
+  box-shadow: none;
+  transition: opacity 200ms ease, background 200ms ease, transform 200ms var(--ease-out);
+}
+:root :is(.pill-btn, .btn):hover { opacity: 0.75; box-shadow: none; background: var(--tone); }
+:root :is(.pill-btn, .btn):active { transform: scale(0.97); }
+:root :is(.pill-btn-primary, .btn-primary, .pill-btn.primary, .btn.primary) {
+  background: var(--fg);
+  color: var(--bg);
+}
+:root :is(.pill-btn-primary, .btn-primary, .pill-btn.primary, .btn.primary):hover { background: var(--fg); }
+:root :is(.pill-btn-danger, .btn-danger) { color: var(--danger); background: rgba(217, 83, 79, 0.1); }
+:root :is(.pill-btn-danger, .btn-danger):hover { background: rgba(217, 83, 79, 0.1); }
+:root :is(.pill-btn, .btn):disabled { opacity: 0.4; cursor: default; }
+
+/* Icon buttons — the site's .icon-btn: square, ⅓ corners. */
+:root .icon-btn {
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--tone);
+  color: var(--fg);
+  box-shadow: none;
+  transition: opacity 200ms ease, transform 200ms var(--ease-out);
+}
+:root .icon-btn:hover { opacity: 0.75; box-shadow: none; }
+:root .icon-btn:active { transform: scale(0.94); }
+:root .icon-btn.on { background: var(--fg); color: var(--bg); }
+
+/* ─── Segmented controls & tabs ──────────────────────────────── */
+:root :is(.seg, .tabs, .layout-toggle) {
+  border: 0;
+  background: var(--tone);
+  border-radius: calc(var(--r-pill) + 1px);
+}
+:root .seg.wrap { border-radius: 12px; }
+:root :is(.seg, .tabs, .layout-toggle) button {
+  border-radius: calc(var(--r-pill) - 2px);
+  font-weight: 400;
+  color: var(--muted);
+}
+:root :is(.seg, .tabs, .layout-toggle) button:hover:not(.active) { color: var(--fg); background: transparent; }
+:root :is(.seg, .tabs, .layout-toggle) button.active { background: var(--bg); color: var(--fg); }
+html[data-theme="dark"] :is(.seg, .tabs, .layout-toggle) button.active { background: var(--tone-strong); }
+
+/* Choice chips (looks, presets, themes, jump links). */
+:root :is(.look, .theme, .jump a, .auto-tag, .tag-row > *) {
+  border-color: transparent;
+  border-radius: var(--r-pill);
+  background: var(--tone);
+}
+:root :is(.look, .theme):hover { border-color: transparent; opacity: 0.8; }
+:root :is(.look.active, .theme.active) { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+:root .preset-card { border-radius: 12px; background: var(--tone); border-color: transparent; }
+:root .preset-card.active { background: transparent; box-shadow: inset 0 0 0 1.5px var(--fg); }
+
+/* ─── Fields ──────────────────────────────────────────────────── */
+:root :is(select, input[type="text"], input[type="number"], input[type="search"],
+          input[type="url"], input[type="email"], textarea) {
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--tone);
+  color: var(--fg);
+  font-weight: 400;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow 150ms ease;
+}
+:root :is(select, input[type="text"], input[type="number"], input[type="search"],
+          input[type="url"], input[type="email"], textarea):focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+:root textarea { border-radius: 12px; }
+:root select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23999' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 11px;
+}
+:root select option { background: var(--bg); color: var(--fg); }
+:root input::placeholder, :root textarea::placeholder { color: var(--muted); }
+:root :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--fg); }
+
+:root input[type="color"] { border: 0; border-radius: 8px; background: var(--tone); }
+:root input[type="color"]::-webkit-color-swatch { border-radius: 6px; }
+
+/* Sliders — the site's volume slider: hairline rail, round ink thumb. */
+:root input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 16px;
+  outline: none;
+}
+:root input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 2px; background: var(--track);
+}
+:root input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4.5px;
+  border: 0; border-radius: 50%; background: var(--fg); cursor: pointer;
+}
+:root input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--track); }
+:root input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--fg); }
+
+/* Switches — ⅓ corners on the track and the knob, like every pill. */
+:root .switch b { border-radius: 6px; background: var(--tone-strong); }
+:root .switch b::after { border-radius: 4px; background: var(--bg); }
+:root .switch input:checked + b { background: var(--fg); }
+
+/* ─── Drop zones: a tone well, not a dashed box ──────────────── */
+:root .drop-zone {
+  border: 1px dashed var(--tone-strong);
+  border-radius: var(--panel-radius);
+  background: transparent;
+  color: var(--muted);
+}
+:root .drop-zone.drag-over { border-color: var(--fg); background: var(--tone); }
+
+/* ─── Status, progress, code ─────────────────────────────────── */
+:root :is(.status-tag, .card-head .tag, .type-badge, .badge) {
+  border: 0;
+  border-radius: 6px;
+  background: var(--tone);
+  text-transform: none;
+  letter-spacing: inherit;
+  font-weight: 400;
+}
+:root .progress-bar { background: var(--tone); border-radius: 2px; }
+:root .progress-bar-fill { background: var(--fg); }
+:root :is(kbd, code) { border-color: transparent; border-radius: 5px; }
+:root kbd { background: var(--tone); }
+
+/* ─── Toast — a glass pill, like the nav ─────────────────────── */
+:root .toast {
+  background: var(--pill-bg);
+  color: var(--pill-ink);
+  -webkit-backdrop-filter: var(--glass);
+  backdrop-filter: var(--glass);
+  border-radius: var(--r-nav);
+  font-weight: 400;
+  font-size: 13.5px;
+  padding: 11px 18px;
+  box-shadow: none;
+}

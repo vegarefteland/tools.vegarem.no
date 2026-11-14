@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logo Tester — Studio</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+  body { padding: 96px 16px 48px; }
+  .wrap { max-width: 1600px; margin: 0 auto; }
+
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.3px; }
+  .page-head p { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+  /* ─── Drop zone ─────────────────────────────────────────── */
+  .drop-zone {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 54px 24px; border: 2px dashed var(--border);
+    border-radius: var(--radius); color: var(--muted); font-size: 13px;
+    text-align: center; cursor: pointer; transition: border-color 200ms, background 200ms;
+  }
+  .drop-zone.drag-over { border-color: var(--fg); background: rgba(128,128,128,0.06); }
+  .drop-zone svg { width: 28px; height: 28px; opacity: .4; }
+  .drop-zone .hint { font-size: 11px; opacity: .7; }
+  input[type="file"] { display: none; }
+
+  /* ─── Workspace ─────────────────────────────────────────── */
+  .workspace { display: none; gap: 20px; align-items: flex-start; }
+  .workspace.show { display: flex; }
+
+  .sidebar {
+    width: 312px; flex-shrink: 0; display: flex; flex-direction: column; gap: 13px;
+    padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+    position: sticky; top: 92px; max-height: calc(100vh - 116px);
+    overflow-y: auto; scrollbar-width: thin;
+  }
+  .board { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label, .section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .field label .val { color: var(--fg); text-transform: none; letter-spacing: 0; font-weight: 500; }
+  select, input[type="text"], input[type="number"] {
+    padding: 7px 10px; font-size: 12.5px; font-family: var(--font);
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--fg); outline: none; width: 100%;
+  }
+  input[type="range"] {
+    width: 100%; height: 4px; -webkit-appearance: none; appearance: none;
+    background: var(--border); border-radius: 2px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--fg); cursor: grab;
+  }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .divider { height: 1px; background: var(--border); margin: 3px 0; }
+
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+  .chk input { accent-color: var(--fg); width: 14px; height: 14px; cursor: pointer; }
+
+  .colrow { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+  .colrow label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .colrow code { font: 11px ui-monospace, Menlo, monospace; color: var(--muted); }
+  input[type="color"] {
+    width: 26px; height: 26px; padding: 0; border: 1px solid var(--border);
+    border-radius: 6px; background: none; cursor: pointer;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+  input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 4px; }
+
+  .palette { display: flex; flex-wrap: wrap; gap: 6px; }
+  .palette .sw { position: relative; width: 34px; height: 26px; }
+  .palette input[type="color"] { width: 100%; height: 100%; }
+  .palette .rm {
+    position: absolute; top: -5px; right: -5px; width: 14px; height: 14px; line-height: 12px;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); font-size: 10px; cursor: pointer; padding: 0; display: none;
+  }
+  .palette .sw:hover .rm { display: block; }
+
+  .file-chip {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 12px;
+  }
+  .file-chip .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-chip .mini {
+    width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--placeholder) center/contain no-repeat; flex-shrink: 0;
+  }
+  .file-chip button {
+    border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 2px;
+  }
+  .file-chip button:hover { color: var(--fg); }
+
+  /* ─── Cards ─────────────────────────────────────────────── */
+  .card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); padding: 16px 18px 18px;
+  }
+  .card.hidden { display: none; }
+  .card h3 { margin: 0 0 3px; font-size: 13.5px; font-weight: 600; }
+  .card .sub { margin: 0 0 14px; font-size: 11.5px; color: var(--muted); line-height: 1.5; max-width: 76ch; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .card-head .tag {
+    font: 500 10.5px ui-monospace, Menlo, monospace; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 100px; padding: 3px 10px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .row-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--muted); margin: 18px 0 10px;
+  }
+  .row-label:first-child { margin-top: 0; }
+
+  /* jump chips, so a long report stays navigable */
+  .jump {
+    display: flex; flex-wrap: wrap; gap: 6px; position: sticky; top: 80px; z-index: 5;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .jump a {
+    font-size: 11.5px; padding: 4px 10px; border-radius: 100px;
+    border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+  }
+  .jump a:hover { color: var(--fg); border-color: var(--muted); }
+
+  /* One sample = a stage of fixed height with a caption under it, so every row
+     lines up however wide or tall the mark happens to be. */
+  .samples { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+  .sample { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .stage {
+    height: var(--stage, 118px); min-width: 96px; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .stage.tight { padding: 0; }
+  .sample .cap {
+    font: 10.5px ui-monospace, Menlo, monospace; color: var(--muted);
+    text-align: center; display: flex; align-items: center; justify-content: center;
+    gap: 6px; flex-wrap: wrap; line-height: 1.4;
+  }
+  .sample .cap b { color: var(--fg); font-weight: 500; }
+
+  /* a logo drawn as a mask: recolours cleanly, stays crisp at any size */
+  .mark {
+    -webkit-mask-position: center; mask-position: center;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-size: contain; mask-size: contain;
+    background-color: var(--ink);
+  }
+  .markimg { object-fit: contain; display: block; }
+
+  .tile {
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+
+  .badge {
+    display: inline-block; font: 500 10px var(--font); text-transform: uppercase;
+    letter-spacing: .4px; padding: 2px 7px; border-radius: 100px; border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .badge.ok { color: #35b37e; border-color: rgba(53,179,126,.45); }
+  .badge.warn { color: #d9a441; border-color: rgba(217,164,65,.45); }
+  .badge.bad { color: var(--danger); border-color: rgba(217,83,79,.45); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px; }
+  .stats > div { display: flex; flex-direction: column; gap: 3px; }
+  .stats span { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .stats b { font-size: 14px; font-weight: 600; }
+  .stats small { font-size: 10.5px; color: var(--muted); font-weight: 400; }
+
+  .note {
+    display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.5;
+    padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--muted);
+  }
+  .note i { width: 5px; height: 5px; border-radius: 50%; background: var(--danger); margin-top: 6px; flex-shrink: 0; }
+  .notes { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+  .ctx-row { display: flex; flex-wrap: wrap; gap: 18px; }
+  .ctx { display: flex; flex-direction: column; gap: 7px; }
+  .ctx .cap { font-size: 10.5px; color: var(--muted); }
+
+  /* browser tab mock */
+  .tabbar { width: 290px; border-radius: 9px 9px 0 0; background: #2b2b2e; padding: 7px 7px 0; }
+  .tabbar .tab {
+    display: flex; align-items: center; gap: 7px; background: #3f3f45; color: #e8e8ea;
+    border-radius: 7px 7px 0 0; padding: 7px 10px; font-size: 11px;
+  }
+  .tabbar .tab .fav { width: 16px; height: 16px; flex-shrink: 0; }
+  .tabbar .urlbar {
+    background: #1f1f22; color: #9b9ba2; border-radius: 100px; margin: 7px 0 0;
+    padding: 5px 10px; font-size: 10.5px; display: flex; align-items: center; gap: 7px;
+  }
+  .tabbar .urlbar .fav { width: 13px; height: 13px; }
+
+  /* phone home screen */
+  .phone {
+    width: 212px; border-radius: 22px; padding: 16px 14px 18px;
+    background: linear-gradient(150deg, #3a4a63, #1d2433 60%, #2b1f36);
+  }
+  .phone .icons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 11px; }
+  .phone .app { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .phone .app .sq {
+    width: 100%; aspect-ratio: 1; border-radius: 22%; background: #fff;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .phone .app .sq.ghost { background: rgba(255,255,255,.14); }
+  .phone .app .lbl { font-size: 7px; color: rgba(255,255,255,.85); }
+
+  /* card, shirt, sign */
+  .bizcard {
+    width: 260px; aspect-ratio: 85/55; border-radius: 6px; display: flex;
+    align-items: center; justify-content: center; padding: 22px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.35);
+  }
+  .shirt { width: 190px; }
+  .sign {
+    width: 300px; aspect-ratio: 16/6; border-radius: 4px; display: flex;
+    align-items: center; justify-content: center; padding: 16px;
+    background: linear-gradient(#5b5f66, #3c4046);
+  }
+  .avatar { border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+  .clearbox { position: relative; display: inline-flex; }
+  .clearbox .edge { position: absolute; inset: 0; border: 1px dashed var(--muted); opacity: .55; }
+
+  .export-row { display: flex; flex-direction: column; gap: 7px; }
+  .pill-btn { justify-content: center; font-size: 12px; width: 100%; }
+  .status { font-size: 11px; color: var(--muted); min-height: 14px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(70px);
+    background: var(--tag-bg); color: var(--tag-fg); padding: 9px 18px; border-radius: 100px;
+    font-size: 12px; font-weight: 500; opacity: 0;
+    transition: transform 400ms var(--ease-out), opacity 400ms; pointer-events: none; z-index: 600;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  @media (max-width: 1000px) {
+    .workspace { flex-direction: column; }
+    .sidebar { width: 100%; position: static; max-height: none; }
+  }
+</style>
+<link rel="stylesheet" href="/tools/skin.css"><!-- last: the shared look wins -->
+</head>
+<body>
+
+<!-- colour-vision filters, applied with CSS filter: url(#…) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="cvd-protanopia" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix"
+      values="0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0"/></filter>
+    <filter id="cvd-deuteranopia" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix"
+      values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/></filter>
+    <filter id="cvd-tritanopia" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix"
+      values="0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0"/></filter>
+    <filter id="cvd-achromatopsia" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix"
+      values="0.299 0.587 0.114 0 0  0.299 0.587 0.114 0 0  0.299 0.587 0.114 0 0  0 0 0 1 0"/></filter>
+  </defs>
+</svg>
+
+<div class="hub-nav">
+  <div class="hub-pill"></div>
+  <button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon"></svg>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Logo Tester</h1>
+    <p>Put a mark through the checks it has to survive: tiny sizes, one colour, bad backgrounds,
+      a squint across the room, and eyes that do not see red. Everything runs in the browser.</p>
+  </div>
+
+  <div id="dropZone" class="drop-zone">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+      <path d="M21 15l-5-5L5 21"/></svg>
+    <p>Drop a logo here, or click to browse</p>
+    <p class="hint">svg is best — png and webp with transparency also work</p>
+  </div>
+  <input type="file" id="fileA" accept=".svg,image/svg+xml,image/png,image/webp,image/*">
+  <input type="file" id="fileB" accept=".svg,image/svg+xml,image/png,image/webp,image/*">
+
+  <div class="workspace" id="workspace">
+    <aside class="sidebar">
+      <span class="section-label">Mark</span>
+      <div id="chipA"></div>
+      <div id="chipB"></div>
+      <button class="pill-btn" id="addB">Add a second version to compare</button>
+
+      <div class="divider"></div>
+      <span class="section-label">Colour</span>
+      <div class="colrow"><span>Ink</span>
+        <label><code id="inkHex">#111111</code><input type="color" id="ink" value="#111111"></label></div>
+      <div class="colrow"><span>Reverse ink</span>
+        <label><code id="ink2Hex">#ffffff</code><input type="color" id="ink2" value="#ffffff"></label></div>
+      <div class="colrow"><span>Page</span>
+        <label><code id="pageHex">#f4f1ea</code><input type="color" id="page" value="#f4f1ea"></label></div>
+      <div class="field">
+        <label>Brand backgrounds <button class="pill-btn" id="addSw" style="width:auto;padding:2px 9px;font-size:10.5px">add</button></label>
+        <div class="palette" id="palette"></div>
+      </div>
+
+      <div class="divider"></div>
+      <span class="section-label">Sizes</span>
+      <div class="field">
+        <label for="sizes">Screen ladder (px wide)</label>
+        <input type="text" id="sizes" value="16, 24, 32, 48, 64, 96, 128, 192">
+      </div>
+      <div class="field">
+        <label for="printSizes">Print ladder (mm wide)</label>
+        <input type="text" id="printSizes" value="6, 10, 15, 25, 40, 70">
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="dpi">Screen DPI</label>
+          <input type="number" id="dpi" value="96" min="48" max="600" step="1"></div>
+        <div class="field"><label for="minfeat">Min ink
+            <span class="val" id="minfeatVal">1.0 px</span></label>
+          <input type="range" id="minfeat" min="0.5" max="3" step="0.1" value="1"></div>
+      </div>
+
+      <div class="divider"></div>
+      <span class="section-label">Clear space</span>
+      <div class="field">
+        <label for="clear">Margin <span class="val" id="clearVal">25% of height</span></label>
+        <input type="range" id="clear" min="0" max="100" step="5" value="25">
+      </div>
+
+      <div class="divider"></div>
+      <span class="section-label">Tests</span>
+      <div id="testToggles" style="display:flex;flex-direction:column;gap:7px"></div>
+
+      <div class="divider"></div>
+      <span class="section-label">Export</span>
+      <div class="export-row">
+        <button class="pill-btn pill-btn-primary" id="sheetBtn">Test sheet (PNG)</button>
+        <button class="pill-btn" id="iconBtn">Icon set (PNG)</button>
+        <button class="pill-btn" id="monoBtn">Mono SVGs</button>
+        <span class="status" id="status"></span>
+      </div>
+    </aside>
+
+    <main class="board" id="board"></main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

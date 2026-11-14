@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio — Vegar Efteland Melhus</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="/shared.css">
+<style>
+  body { padding: 90px 16px 40px; min-height: 100vh; }
+  .hub-wrap { max-width: 1180px; margin: 0 auto; }
+
+  .hub-intro { margin: 22px 0 26px; font-size: 15px; line-height: 1.5; max-width: 560px; }
+  .hub-intro span { color: var(--muted); }
+  .hub-intro a { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  .hub-intro a:hover { opacity: 0.5; }
+
+  /* Cards: flat tone panels. Every card is the whole click target. */
+  .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+
+  .tool-card {
+    position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 150px;
+    padding: 16px 16px 14px; border-radius: var(--panel-radius); background: var(--surface);
+    transition: background 200ms ease, transform 280ms var(--ease-out);
+    animation: cardIn 300ms var(--ease-out) both;
+  }
+  .tool-card:hover { background: color-mix(in srgb, var(--surface) 100%, var(--fg) 4%); }
+  .tool-card:active { transform: scale(0.99); }
+  .tool-card.unavailable { opacity: 0.45; pointer-events: none; }
+
+  .tool-top { display: flex; align-items: center; justify-content: space-between; }
+  .tool-icon {
+    width: var(--pill-h); height: var(--pill-h); border-radius: var(--r-pill); background: var(--tone);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tool-icon svg { width: 15px; height: 15px; stroke: var(--fg); fill: none; stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .tool-arrow { width: 13px; height: 13px; color: var(--muted); transition: color 200ms, transform 280ms var(--ease-out); }
+  .tool-card:hover .tool-arrow { color: var(--fg); transform: translate(2px, -2px); }
+
+  .tool-card h2 { margin: 6px 0 0; font-size: 15px; font-weight: 400; }
+  .tool-desc { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .tool-foot { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px;
+    border-radius: 8px; background: var(--tone); font-size: 11.5px; color: var(--fg); }
+  .chip .dot { width: 6px; height: 6px; border-radius: 2px; background: currentColor; }
+  .chip.ok { color: #3f9b5a; } .chip.warn { color: var(--danger); }
+
+  @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  footer {
+    margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--border);
+    font-size: 12.5px; color: var(--muted); line-height: 1.7;
+    display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  footer code { font: 11.5px var(--mono); background: var(--tone); padding: 1px 6px; border-radius: 5px; }
+</style>
+<link rel="stylesheet" href="/tools/skin.css"><!-- last: the shared look wins -->
+</head>
+<body>
+
+<div class="hub-nav">
+  <div class="hub-pill" id="nav"><a href="/" class="active">Studio</a></div>
+  <button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+</div>
+
+<main class="hub-wrap">
+  <div class="tool-grid" id="grid"></div>
+</main>
+
+<script>
+(function(){
+  const root=document.documentElement, icon=document.getElementById("themeIcon");
+  const sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+  const moon='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  const paint=()=>{ icon.innerHTML = root.getAttribute("data-theme")==="dark"?sun:moon; };
+  const saved=localStorage.getItem("vegar-tools-theme");
+  if(saved) root.setAttribute("data-theme",saved);
+  paint();
+  document.getElementById("themeToggle").addEventListener("click",()=>{
+    const next=root.getAttribute("data-theme")==="dark"?"light":"dark";
+    root.setAttribute("data-theme",next);
+    localStorage.setItem("vegar-tools-theme",next); paint();
+  });
+})();
+
+/* Static build for GitHub Pages: the tool list is baked in (no server).
+   Emboss is left out — it needs the local Python engine. */
+const TOOLS=[
+ {
+  "url": "tools/pixel/index.html",
+  "title": "Pixel, Bitmap & ASCII",
+  "tag": "Video to glyphs",
+  "icon": "M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM16 10h4v4h-4zM4 16h4v4H4zM10 16h4v4h-4z"
+ },
+ {
+  "url": "tools/logo/index.html",
+  "title": "Logo Tester",
+  "tag": "Stress-test a mark",
+  "icon": "M12 3a9 9 0 1 0 9 9M12 3v9l7.5 5"
+ },
+ {
+  "url": "tools/gradient/index.html",
+  "title": "Gradient Generator",
+  "tag": "Mesh, horizon & grain",
+  "icon": "M3 3h18v18H3zM3 12h18M3 17h18M3 7h18"
+ },
+ {
+  "url": "tools/paths/index.html",
+  "title": "Path View",
+  "tag": "Points & handles",
+  "icon": "M5 19C5 9 9 5 19 5M5 19h.01M19 5h.01M5 9h4M15 19v-4"
+ },
+ {
+  "url": "tools/layout/index.html",
+  "title": "Project Layout",
+  "tag": "Preview & export",
+  "icon": "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"
+ },
+ {
+  "url": "tools/converter/index.html",
+  "title": "Image & Video Converter",
+  "tag": "Convert & compress",
+  "icon": "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"
+ },
+ {
+  "url": "tools/animator/index.html",
+  "title": "Animator",
+  "tag": "Loop preview",
+  "icon": "M3 4h14v12H3zM17 8l4-2v10l-4-2"
+ }
+];
+(function(d){
+  const grid=document.getElementById("grid"), nav=document.getElementById("nav");
+  d.tools.forEach(function(t, i){
+    const ok=t.available && t.engine_ready;
+
+    const wrap=document.createElement(ok?"a":"div");
+    if(ok) wrap.href="/"+t.url;
+    wrap.className="tool-card"+(ok?"":" unavailable");
+    wrap.style.animationDelay=(i*35)+"ms";
+    let state="";
+    if(!t.available) state="Not found";
+    else if(t.engine && !t.engine_ready) state="Engine off";
+    else if(t.engine) state="Local engine";
+    const chips=['<span class="chip">'+t.tag+'</span>'];
+    if(state) chips.push('<span class="chip '+(state==="Local engine"?"ok":"warn")+'"><i class="dot"></i>'+state+'</span>');
+    wrap.innerHTML=
+      '<div class="tool-top"><span class="tool-icon"><svg viewBox="0 0 24 24"><path d="'+t.icon+'"/></svg></span>'+
+      '<svg class="tool-arrow" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H4M10 2V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+      '<h2>'+t.title+'</h2>'+
+      '<div class="tool-foot">'+chips.join("")+'</div>';
+    grid.appendChild(wrap);
+  });
+})({tools: TOOLS.map(t => Object.assign({available: true, engine_ready: true}, t))});
+</script>
+</body>
+</html>

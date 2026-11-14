@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Generator — Studio</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+  body { padding: 72px 16px 16px; height: 100vh; overflow: hidden; }
+  .app {
+    display: grid; grid-template-columns: 292px minmax(0, 1fr) 272px;
+    gap: 14px; height: 100%;
+  }
+  .panel {
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+    overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; min-height: 0;
+  }
+  .panel-inner { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  .h { font-size: 10px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
+  .sep-line { height: 1px; background: var(--border); }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  .hidden { display: none !important; }
+
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--border);
+    border-radius: 100px; padding: 3px; gap: 2px; }
+  .seg.wrap { display: flex; flex-wrap: wrap; border-radius: 12px; }
+  .seg button {
+    padding: 6px 8px; font: 500 11.5px var(--font); border: 0; border-radius: 100px;
+    background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap;
+  }
+  .seg.wrap button { flex: 1 0 auto; }
+  .seg button.active { background: var(--tag-bg); color: var(--tag-fg); }
+  .seg button:hover:not(.active) { color: var(--fg); }
+
+  .ctl { display: flex; flex-direction: column; gap: 5px; }
+  .ctl-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; }
+  .ctl-head .name { opacity: .75; cursor: pointer; }
+  .ctl-head .name:hover { opacity: 1; }
+  .ctl-head .val { font: 500 11px ui-monospace, Menlo, monospace; color: var(--muted); }
+  input[type="range"] { width: 100%; height: 16px; margin: 0; -webkit-appearance: none; appearance: none;
+    background: transparent; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: var(--border); border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px;
+    margin-top: -5px; border-radius: 50%; background: var(--fg); border: 0; }
+  input[type="range"]::-moz-range-track { height: 3px; background: var(--border); border-radius: 2px; }
+  input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--fg); border: 0; }
+
+  select, input[type="text"], input[type="number"], textarea {
+    padding: 6px 9px; font: 12px var(--font); border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--fg); outline: none; width: 100%;
+  }
+  textarea { resize: vertical; min-height: 46px; font-family: var(--mono); font-size: 11px; }
+  select:focus, input:focus, textarea:focus { border-color: var(--muted); }
+
+  .chk { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; cursor: pointer; }
+  .chk > span:first-child { opacity: .75; }
+  .switch { position: relative; width: 28px; height: 16px; flex-shrink: 0; }
+  .switch input { opacity: 0; position: absolute; inset: 0; margin: 0; cursor: pointer; }
+  .switch b { position: absolute; inset: 0; border-radius: 100px; background: var(--border); transition: background 150ms; pointer-events: none; }
+  .switch b::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--bg); transition: transform 180ms var(--ease-out); }
+  .switch input:checked + b { background: var(--fg); }
+  .switch input:checked + b::after { transform: translateX(12px); }
+
+  /* ─── Palette library ───────────────────────────────────── */
+  .pal-list { display: flex; flex-direction: column; gap: 4px; max-height: 268px; overflow-y: auto; scrollbar-width: thin; }
+  .pal {
+    display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 8px;
+    border: 1px solid transparent; cursor: pointer;
+  }
+  .pal:hover { border-color: var(--border); background: var(--bg); }
+  .pal.active { border-color: var(--fg); }
+  .pal .ramp { height: 16px; border-radius: 4px; }
+  .pal .nm { font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; }
+
+  /* ─── Stops editor ──────────────────────────────────────── */
+  .stops { display: flex; flex-direction: column; gap: 6px; }
+  .stop { display: flex; align-items: center; gap: 7px; }
+  .stop input[type="color"] { width: 26px; height: 24px; padding: 0; border: 1px solid var(--border);
+    border-radius: 6px; background: none; cursor: pointer; flex-shrink: 0; }
+  .stop input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+  .stop input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 4px; }
+  .stop code { font: 10.5px ui-monospace, Menlo, monospace; color: var(--muted); width: 56px; }
+  .stop input[type="range"] { flex: 1; }
+  .stop button { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1; padding: 0; flex-shrink: 0; }
+  .stop button:hover { color: var(--danger); border-color: var(--danger); }
+  .ramp-preview { height: 26px; border-radius: 6px; border: 1px solid var(--border); }
+
+  /* ─── Stage ─────────────────────────────────────────────── */
+  .stage-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+  .stage {
+    position: relative; flex: 1; min-height: 0; border: 1px solid var(--border);
+    border-radius: var(--radius); display: flex; align-items: center; justify-content: center;
+    overflow: hidden; background:
+      linear-gradient(45deg, rgba(128,128,128,.10) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(128,128,128,.10) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(128,128,128,.10) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(128,128,128,.10) 75%);
+    background-size: 18px 18px; background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  }
+  #out { max-width: calc(100% - 28px); max-height: calc(100% - 28px); display: block;
+    box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+
+  .bar {
+    display: flex; align-items: center; gap: 8px; border: 1px solid var(--border);
+    border-radius: 100px; padding: 5px 10px 5px 5px; background: var(--surface); flex-wrap: wrap;
+  }
+  .bar .seed { flex: 1; min-width: 120px; }
+  .bar input[type="text"] { font-family: var(--mono); font-size: 11.5px;
+    border-radius: 100px; padding: 6px 12px; }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); display: inline-flex; align-items: center;
+    justify-content: center; cursor: pointer; flex-shrink: 0; transition: box-shadow 150ms;
+  }
+  .icon-btn:hover { box-shadow: var(--hover-shadow); }
+  .icon-btn svg { width: 14px; height: 14px; }
+  .icon-btn.on { background: var(--tag-bg); color: var(--tag-fg); }
+
+  .history { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+  .history canvas {
+    width: 54px; height: 38px; border-radius: 6px; border: 1px solid var(--border);
+    cursor: pointer; flex-shrink: 0; display: block;
+  }
+  .history canvas:hover { border-color: var(--fg); }
+
+  .pill-btn { justify-content: center; font-size: 12px; width: 100%; }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .note { font-size: 11px; color: var(--muted); line-height: 1.45; }
+  .stat { font: 10.5px ui-monospace, Menlo, monospace; color: var(--muted); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(70px);
+    background: var(--tag-bg); color: var(--tag-fg); padding: 9px 18px; border-radius: 100px;
+    font-size: 12px; font-weight: 500; opacity: 0;
+    transition: transform 400ms var(--ease-out), opacity 400ms; pointer-events: none; z-index: 600;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  @media (max-width: 1150px) {
+    body { height: auto; overflow: auto; }
+    .app { grid-template-columns: 1fr; height: auto; }
+    .stage-col { order: -1; }
+    .stage { height: 56vh; flex: none; }
+    .panel { overflow: visible; }
+  }
+</style>
+<link rel="stylesheet" href="/tools/skin.css"><!-- last: the shared look wins -->
+</head>
+<body>
+
+<div class="hub-nav">
+  <div class="hub-pill" id="nav"></div>
+  <button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon"></svg>
+  </button>
+</div>
+
+<div class="app">
+  <!-- ─── Left: shape and colour ────────────────────────────── -->
+  <aside class="panel">
+    <div class="panel-inner">
+      <div class="h">Type</div>
+      <div class="seg wrap" id="typeSeg"></div>
+      <div id="typeParams" style="display:flex;flex-direction:column;gap:11px"></div>
+
+      <div class="sep-line"></div>
+      <div class="h">Colour ramp</div>
+      <div class="ramp-preview" id="rampPreview"></div>
+      <div class="stops" id="stops"></div>
+      <div class="row">
+        <button class="pill-btn" id="addStop">Add stop</button>
+        <button class="pill-btn" id="spreadStops">Even out</button>
+      </div>
+      <div class="row">
+        <button class="pill-btn" id="reverseStops">Reverse</button>
+        <button class="pill-btn" id="shuffleStops">Shuffle</button>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><span class="name">Interpolation</span></div>
+        <select id="space"></select>
+      </div>
+      <div class="ctl">
+        <div class="ctl-head"><span class="name">Easing</span></div>
+        <select id="easing"></select>
+      </div>
+      <div class="ctl" id="biasCtl"></div>
+
+      <div class="sep-line"></div>
+      <div class="h">Palettes</div>
+      <input type="text" id="palSearch" placeholder="Search palettes…">
+      <div class="seg wrap" id="famSeg"></div>
+      <div class="pal-list" id="palList"></div>
+    </div>
+  </aside>
+
+  <!-- ─── Centre: preview ───────────────────────────────────── -->
+  <main class="stage-col">
+    <div class="bar">
+      <button class="icon-btn" id="randomBtn" title="Randomize everything (R)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+      </button>
+      <span class="seed"><input type="text" id="seed" spellcheck="false" aria-label="seed"></span>
+      <button class="icon-btn" id="newSeed" title="New seed (S)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      </button>
+      <div class="seg" style="flex:0 0 auto" id="lockSeg">
+        <button data-lock="colours" title="Keep the colours when randomizing">Lock colour</button>
+        <button data-lock="type" title="Keep the gradient type when randomizing">Lock type</button>
+        <button data-lock="finish" title="Keep grain and finish when randomizing">Lock finish</button>
+      </div>
+    </div>
+    <div class="stage" id="stage"><canvas id="out"></canvas></div>
+    <div class="history" id="history"></div>
+  </main>
+
+  <!-- ─── Right: finish, canvas, export ─────────────────────── -->
+  <aside class="panel">
+    <div class="panel-inner">
+      <div class="h">Finish</div>
+      <div id="finish" style="display:flex;flex-direction:column;gap:11px"></div>
+
+      <div class="sep-line"></div>
+      <div class="h">Canvas</div>
+      <select id="sizePreset"></select>
+      <div class="btn-grid">
+        <label class="ctl"><span class="ctl-head"><span class="name">Width</span></span>
+          <input type="number" id="cw" min="16" max="8000" step="1"></label>
+        <label class="ctl"><span class="ctl-head"><span class="name">Height</span></span>
+          <input type="number" id="chh" min="16" max="8000" step="1"></label>
+      </div>
+      <button class="pill-btn" id="swapSize">Swap orientation</button>
+      <div id="canvasExtra" style="display:flex;flex-direction:column;gap:11px"></div>
+
+      <div class="sep-line"></div>
+      <div class="h">Label</div>
+      <textarea id="label" placeholder="SEA GRADIENT"></textarea>
+      <label class="chk"><span>List the hex codes</span><span class="switch"><input type="checkbox" id="hexList"><b></b></span></label>
+      <label class="chk"><span>Pick ink automatically</span><span class="switch"><input type="checkbox" id="labelAuto" checked><b></b></span></label>
+      <div class="ctl" id="labelColourCtl">
+        <div class="ctl-head"><span class="name">Ink</span><code class="val" id="labelColourHex"></code></div>
+        <input type="color" id="labelColour" style="width:100%;height:26px;padding:0;border:1px solid var(--border);border-radius:6px;background:none">
+      </div>
+      <div class="seg wrap" id="labelPos"></div>
+      <div id="labelParams" style="display:flex;flex-direction:column;gap:11px"></div>
+
+      <div class="sep-line"></div>
+      <div class="h">Export</div>
+      <div class="btn-grid">
+        <button class="pill-btn pill-btn-primary" id="png1">PNG 1×</button>
+        <button class="pill-btn" id="png2">PNG 2×</button>
+        <button class="pill-btn" id="jpg">JPEG</button>
+        <button class="pill-btn" id="svg">SVG</button>
+        <button class="pill-btn" id="copyCss">Copy CSS</button>
+        <button class="pill-btn" id="copyHex">Copy hex</button>
+        <button class="pill-btn" id="savePreset">Save JSON</button>
+        <button class="pill-btn" id="loadPreset">Load JSON</button>
+      </div>
+      <input type="file" id="jsonInput" accept="application/json,.json" style="display:none">
+      <div class="note" id="exportNote"></div>
+      <div class="stat" id="sizeNote"></div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="engine.js"></script>
+<script src="render.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

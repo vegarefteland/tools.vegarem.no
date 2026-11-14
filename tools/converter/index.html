@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image &amp; Video Converter — Studio</title>
+<link rel="stylesheet" href="../shared.css">
+<script src="../vendor/pako/pako.umd.min.js"></script>
+<script src="../vendor/utif/UTIF.js"></script>
+<script src="../vendor/heic2any/heic2any.min.js"></script>
+<style>
+  body { padding: 96px 16px 60px; }
+
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  .page-head { margin-bottom: 24px; }
+  .page-head h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.3px; }
+  .page-head p { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+  .tabs {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 3px;
+    margin-bottom: 24px;
+    gap: 2px;
+  }
+  .tabs button {
+    padding: 7px 18px;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: var(--font);
+    border: none;
+    border-radius: 100px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 150ms, color 150ms;
+  }
+  .tabs button.active { background: var(--tag-bg); color: var(--tag-fg); }
+  .tabs button:hover:not(.active) { color: var(--fg); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ─── Drop zone ─────────────────────────────────────────── */
+  .drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 46px 24px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 200ms, background 200ms;
+    margin-bottom: 20px;
+  }
+  .drop-zone.drag-over { border-color: var(--fg); background: rgba(128,128,128,0.06); }
+  .drop-zone svg { width: 28px; height: 28px; opacity: 0.4; }
+  .drop-zone .hint { font-size: 11px; opacity: 0.7; }
+  input[type="file"] { display: none; }
+
+  /* ─── Settings bar ──────────────────────────────────────── */
+  .settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    background: var(--surface);
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 110px; }
+  .field label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+  .field select, .field input[type="text"], .field input[type="number"] {
+    padding: 7px 10px;
+    font-size: 12.5px;
+    font-family: var(--font);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    outline: none;
+    width: 100%;
+  }
+  .field-row { display: flex; align-items: center; gap: 8px; }
+  .field.grow { flex: 1; }
+  .field input[type="range"] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  .field input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--fg);
+    cursor: grab;
+  }
+  .field .val { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+  .checkbox-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+
+  .actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .actions-row .left { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+  .actions-row .right { display: flex; gap: 8px; }
+
+  /* ─── File cards ────────────────────────────────────────── */
+  .file-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .file-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .file-thumb {
+    width: 44px; height: 44px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--placeholder);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .file-thumb img, .file-thumb video { width: 100%; height: 100%; object-fit: cover; }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .file-meta .arrow { opacity: 0.5; }
+  .file-meta .new-size { color: var(--fg); font-weight: 500; }
+  .file-meta .saved { color: #2e9e5b; }
+
+  .progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--fg);
+    width: 0%;
+    transition: width 200ms;
+  }
+
+  .file-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 150ms;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { box-shadow: var(--hover-shadow); }
+  .icon-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .icon-btn svg { width: 13px; height: 13px; }
+
+  .status-tag {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--placeholder);
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .status-tag.done { color: #2e9e5b; }
+  .status-tag.error { color: var(--danger); }
+  .status-tag.working { color: var(--fg); }
+
+  .empty-hint {
+    text-align: center;
+    padding: 30px 0;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .engine-note {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .log-toggle { font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: underline; margin-top: 6px; display: inline-block; }
+  .log-box {
+    display: none;
+    font-family: "SF Mono", monospace;
+    font-size: 10.5px;
+    line-height: 1.5;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 6px;
+    max-height: 140px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: var(--muted);
+  }
+  .log-box.open { display: block; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--tag-bg);
+    color: var(--tag-fg);
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0;
+    transition: transform 400ms var(--ease-out), opacity 400ms;
+    pointer-events: none;
+    z-index: 600;
+    max-width: 80vw;
+    text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+<link rel="stylesheet" href="/tools/skin.css"><!-- last: the shared look wins -->
+</head>
+<body>
+
+<div class="hub-nav">
+  <div class="hub-pill">
+    <a href="/">Studio</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/layout/index.html">Layout</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/converter/index.html" class="active">Converter</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/animator/index.html">Animator</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/pixel/index.html">Pixel</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/logo/index.html">Logo</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/gradient/index.html">Gradient</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/paths/index.html">Paths</a>
+  </div>
+  <button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Image &amp; Video Converter</h1>
+    <p>Batch-convert images with canvas, compress or convert video with ffmpeg — all in-browser, nothing uploaded anywhere.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="active" data-tab="image">Images</button>
+    <button data-tab="video">Video</button>
+  </div>
+
+  <!-- ============================ IMAGE PANEL ============================ -->
+  <div class="panel active" id="panel-image">
+    <div id="imgDropZone" class="drop-zone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <p>Drop images here, or click to browse</p>
+      <p class="hint">jpg, png, webp, gif, bmp, svg, avif, heic/heif, tiff, ico — batch supported</p>
+    </div>
+    <input type="file" id="imgFileInput" multiple accept="image/*,.heic,.heif,.tif,.tiff,.svg,.ico,.avif">
+
+    <div class="settings">
+      <div class="field">
+        <label>Output Format</label>
+        <select id="imgFormat">
+          <option value="webp">WEBP</option>
+          <option value="jpg">JPG</option>
+          <option value="png">PNG</option>
+          <option value="avif">AVIF</option>
+          <option value="ico">ICO</option>
+        </select>
+      </div>
+      <div class="field grow">
+        <label>Quality <span class="val" id="imgQualityVal">85</span></label>
+        <input type="range" id="imgQuality" min="1" max="100" value="85">
+      </div>
+      <div class="field">
+        <label>Resize</label>
+        <select id="imgResizeMode">
+          <option value="none">Original size</option>
+          <option value="width">Max width (px)</option>
+          <option value="height">Max height (px)</option>
+          <option value="percent">Scale (%)</option>
+        </select>
+      </div>
+      <div class="field" id="imgResizeValueField" style="display:none;">
+        <label>Value</label>
+        <input type="number" id="imgResizeValue" placeholder="e.g. 1600">
+      </div>
+    </div>
+
+    <div class="actions-row">
+      <div class="left" id="imgStats">No files loaded</div>
+      <div class="right">
+        <button class="pill-btn" id="imgClearBtn" style="display:none;">Clear</button>
+        <button class="pill-btn" id="imgAddMoreBtn" style="display:none;">Add More</button>
+        <button class="pill-btn" id="imgZipBtn" style="display:none;">Download All (.zip)</button>
+        <button class="pill-btn pill-btn-primary" id="imgConvertBtn" style="display:none;">Convert All</button>
+      </div>
+    </div>
+
+    <div class="file-list" id="imgFileList"></div>
+    <div class="empty-hint" id="imgEmptyHint">Nothing here yet — drop some images above.</div>
+  </div>
+
+  <!-- ============================ VIDEO PANEL ============================ -->
+  <div class="panel" id="panel-video">
+    <div class="engine-note" id="engineNote"></div>
+
+    <div id="vidDropZone" class="drop-zone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      <p>Drop video here, or click to browse</p>
+      <p class="hint">mp4, mov, webm, avi, mkv, flv, wmv, 3gp, mpeg/mpg, m4v — queue supported</p>
+    </div>
+    <input type="file" id="vidFileInput" multiple accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska,video/x-flv,video/x-ms-wmv,video/3gpp,video/mpeg,.mkv,.flv,.wmv,.3gp,.mpg,.mpeg,.m4v">
+
+    <div class="settings">
+      <div class="field">
+        <label>Output Format</label>
+        <select id="vidFormat">
+          <option value="mp4">MP4 (H.264)</option>
+          <option value="webm">WebM (VP9)</option>
+          <option value="gif">GIF</option>
+        </select>
+      </div>
+      <div class="field grow" id="vidCrfField">
+        <label>Quality — CRF <span class="val" id="vidCrfVal">24</span></label>
+        <input type="range" id="vidCrf" min="18" max="35" value="24">
+      </div>
+      <div class="field" id="vidPresetField">
+        <label>Preset</label>
+        <select id="vidPreset">
+          <option value="ultrafast">Ultrafast</option>
+          <option value="fast">Fast</option>
+          <option value="medium">Medium</option>
+          <option value="slow" selected>Slow</option>
+          <option value="veryslow">Veryslow</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Max Width (px)</label>
+        <input type="number" id="vidWidth" placeholder="Original">
+      </div>
+      <div class="field">
+        <label>Trim Start (s)</label>
+        <input type="text" id="vidTrimStart" placeholder="optional">
+      </div>
+      <div class="field">
+        <label>Trim End (s)</label>
+        <input type="text" id="vidTrimEnd" placeholder="optional">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <div class="checkbox-field"><input type="checkbox" id="vidMute"> <label for="vidMute">Mute audio</label></div>
+      </div>
+    </div>
+
+    <div class="actions-row">
+      <div class="left" id="vidStats">No files loaded</div>
+      <div class="right">
+        <button class="pill-btn" id="vidClearBtn" style="display:none;">Clear</button>
+        <button class="pill-btn" id="vidAddMoreBtn" style="display:none;">Add More</button>
+        <button class="pill-btn pill-btn-primary" id="vidConvertBtn" style="display:none;">Convert All</button>
+      </div>
+    </div>
+
+    <div class="file-list" id="vidFileList"></div>
+    <div class="empty-hint" id="vidEmptyHint">Nothing here yet — drop a video above.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// Isolated on purpose: this is the only part of the page that needs an ES
+// module (ffmpeg.wasm's worker requires it). If this fails to load in some
+// browser/context, only the video tab breaks — everything else below runs
+// as a plain classic script regardless.
+import { FFmpeg } from "../vendor/ffmpeg/index.js";
+import { fetchFile } from "../vendor/util/index.js";
+window.__ffmpegModule = { FFmpeg, fetchFile };
+</script>
+
+<script>
+/* ================================================================
+ * THEME (synced with hub via localStorage)
+ * ================================================================ */
+const root = document.documentElement;
+const themeIcon = document.getElementById("themeIcon");
+const sunPath = `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
+const moonPath = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+function applyThemeIcon() { themeIcon.innerHTML = root.getAttribute("data-theme") === "dark" ? sunPath : moonPath; }
+const savedTheme = localStorage.getItem("vegar-tools-theme");
+if (savedTheme) root.setAttribute("data-theme", savedTheme);
+applyThemeIcon();
+document.getElementById("themeToggle").addEventListener("click", () => {
+  const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("vegar-tools-theme", next);
+  applyThemeIcon();
+});
+
+/* ================================================================
+ * TABS
+ * ================================================================ */
+document.querySelectorAll(".tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+/* ================================================================
+ * TOAST
+ * ================================================================ */
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function showToast(msg, ms = 2400) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms);
+}
+
+function fmtSize(bytes) {
+  if (!bytes && bytes !== 0) return "—";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+/* ================================================================
+ * MINIMAL ZIP WRITER (store method — no external deps)
+ * ================================================================ */
+let crc32Table = null;
+function crc32(buf) {
+  if (!crc32Table) {
+    crc32Table = [];
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      crc32Table[n] = c;
+    }
+  }
+  let crc = 0 ^ (-1);
+  for (let i = 0; i < buf.length; i++) crc = (crc >>> 8) ^ crc32Table[(crc ^ buf[i]) & 0xFF];
+  return (crc ^ (-1)) >>> 0;
+}
+
+function makeZip(entries) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const { name, data } of entries) {
+    const nameBytes = encoder.encode(name);
+    const crc = crc32(data);
+    const size = data.length;
+
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true);
+    lh.setUint16(4, 20, true);
+    lh.setUint16(6, 0, true);
+    lh.setUint16(8, 0, true);
+    lh.setUint16(10, 0, true);
+    lh.setUint16(12, 0, true);
+    lh.setUint32(14, crc, true);
+    lh.setUint32(18, size, true);
+    lh.setUint32(22, size, true);
+    lh.setUint16(26, nameBytes.length, true);
+    lh.setUint16(28, 0, true);
+    localParts.push(new Uint8Array(lh.buffer), nameBytes, data);
+
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true);
+    ch.setUint16(4, 20, true);
+    ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0, true);
+    ch.setUint16(10, 0, true);
+    ch.setUint16(12, 0, true);
+    ch.setUint16(14, 0, true);
+    ch.setUint32(16, crc, true);
+    ch.setUint32(20, size, true);
+    ch.setUint32(24, size, true);
+    ch.setUint16(28, nameBytes.length, true);
+    ch.setUint16(30, 0, true);
+    ch.setUint16(32, 0, true);
+    ch.setUint16(34, 0, true);
+    ch.setUint16(36, 0, true);
+    ch.setUint32(38, 0, true);
+    ch.setUint32(42, offset, true);
+    centralParts.push(new Uint8Array(ch.buffer), nameBytes);
+
+    offset += lh.buffer.byteLength + nameBytes.length + size;
+  }
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralOffset = offset;
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(4, 0, true);
+  end.setUint16(6, 0, true);
+  end.setUint16(8, entries.length, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, centralOffset, true);
+  end.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, new Uint8Array(end.buffer)], { type: "application/zip" });
+}
+
+/* ================================================================
+ * IMAGE CONVERTER
+ * ================================================================ */
+let imgItems = [];
+let imgNextId = 0;
+
+const imgDropZone = document.getElementById("imgDropZone");
+const imgFileInput = document.getElementById("imgFileInput");
+const imgFileList = document.getElementById("imgFileList");
+const imgEmptyHint = document.getElementById("imgEmptyHint");
+const imgStats = document.getElementById("imgStats");
+const imgConvertBtn = document.getElementById("imgConvertBtn");
+const imgZipBtn = document.getElementById("imgZipBtn");
+const imgClearBtn = document.getElementById("imgClearBtn");
+const imgAddMoreBtn = document.getElementById("imgAddMoreBtn");
+const imgFormat = document.getElementById("imgFormat");
+const imgQuality = document.getElementById("imgQuality");
+const imgQualityVal = document.getElementById("imgQualityVal");
+const imgResizeMode = document.getElementById("imgResizeMode");
+const imgResizeValueField = document.getElementById("imgResizeValueField");
+const imgResizeValue = document.getElementById("imgResizeValue");
+
+imgQuality.addEventListener("input", () => imgQualityVal.textContent = imgQuality.value);
+imgResizeMode.addEventListener("change", () => {
+  imgResizeValueField.style.display = imgResizeMode.value === "none" ? "none" : "";
+});
+imgFormat.addEventListener("change", () => {
+  const noQuality = imgFormat.value === "png" || imgFormat.value === "ico";
+  imgQuality.disabled = noQuality;
+  imgQuality.parentElement.style.opacity = noQuality ? 0.4 : 1;
+});
+
+imgDropZone.addEventListener("click", () => imgFileInput.click());
+imgDropZone.addEventListener("dragover", e => { e.preventDefault(); imgDropZone.classList.add("drag-over"); });
+imgDropZone.addEventListener("dragleave", () => imgDropZone.classList.remove("drag-over"));
+imgDropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  imgDropZone.classList.remove("drag-over");
+  addImageFiles(e.dataTransfer.files);
+});
+imgFileInput.addEventListener("change", e => { addImageFiles(e.target.files); imgFileInput.value = ""; });
+imgAddMoreBtn.addEventListener("click", () => imgFileInput.click());
+imgClearBtn.addEventListener("click", () => {
+  imgItems.forEach(it => { URL.revokeObjectURL(it.url); if (it.outUrl) URL.revokeObjectURL(it.outUrl); });
+  imgItems = [];
+  renderImgList();
+});
+
+function addImageFiles(fileList) {
+  const files = Array.from(fileList).filter(f =>
+    f.type.startsWith("image/") || /\.(heic|heif|tif|tiff|svg|ico|avif)$/i.test(f.name)
+  );
+  if (!files.length) return;
+  files.forEach(file => {
+    imgItems.push({
+      id: imgNextId++, file, url: URL.createObjectURL(file),
+      status: "queued", outBlob: null, outUrl: null, outSize: null, outName: null
+    });
+  });
+  renderImgList();
+}
+
+function renderImgList() {
+  const has = imgItems.length > 0;
+  imgEmptyHint.style.display = has ? "none" : "";
+  imgConvertBtn.style.display = has ? "" : "none";
+  imgClearBtn.style.display = has ? "" : "none";
+  imgAddMoreBtn.style.display = has ? "" : "none";
+  imgZipBtn.style.display = imgItems.some(i => i.status === "done") ? "" : "none";
+
+  const totalOriginal = imgItems.reduce((s, i) => s + i.file.size, 0);
+  const doneCount = imgItems.filter(i => i.status === "done").length;
+  imgStats.textContent = has
+    ? `${imgItems.length} file${imgItems.length > 1 ? "s" : ""} · ${fmtSize(totalOriginal)}${doneCount ? ` · ${doneCount} converted` : ""}`
+    : "No files loaded";
+
+  imgFileList.innerHTML = "";
+  imgItems.forEach(item => imgFileList.appendChild(buildImgCard(item)));
+}
+
+function buildImgCard(item) {
+  const card = document.createElement("div");
+  card.className = "file-card";
+
+  const thumb = document.createElement("div");
+  thumb.className = "file-thumb";
+  const kind = classifyImageFile(item.file);
+  if (item.status === "done") {
+    const img = document.createElement("img");
+    img.src = item.outUrl;
+    thumb.appendChild(img);
+  } else if (kind === "standard" || kind === "svg") {
+    const img = document.createElement("img");
+    img.src = item.url;
+    thumb.appendChild(img);
+  } else {
+    thumb.textContent = kind.toUpperCase();
+    thumb.style.fontSize = "9px";
+    thumb.style.fontWeight = "700";
+    thumb.style.color = "var(--muted)";
+  }
+  card.appendChild(thumb);
+
+  const info = document.createElement("div");
+  info.className = "file-info";
+  const name = document.createElement("div");
+  name.className = "file-name";
+  name.textContent = item.file.name;
+  info.appendChild(name);
+
+  const meta = document.createElement("div");
+  meta.className = "file-meta";
+  meta.innerHTML = `<span>${fmtSize(item.file.size)}</span>`;
+  if (item.status === "done") {
+    const savedPct = Math.round((1 - item.outSize / item.file.size) * 100);
+    meta.innerHTML += `<span class="arrow">→</span><span class="new-size">${fmtSize(item.outSize)}</span>` +
+      (savedPct > 0 ? `<span class="saved">-${savedPct}%</span>` : "");
+  }
+  info.appendChild(meta);
+  card.appendChild(info);
+
+  const statusTag = document.createElement("span");
+  statusTag.className = "status-tag" + (item.status === "done" ? " done" : item.status === "converting" ? " working" : item.status === "error" ? " error" : "");
+  statusTag.textContent = item.status === "queued" ? "Queued" : item.status === "converting" ? "Converting…" : item.status === "done" ? "Done" : "Error";
+  card.appendChild(statusTag);
+
+  const actions = document.createElement("div");
+  actions.className = "file-actions";
+
+  const dlBtn = document.createElement("button");
+  dlBtn.className = "icon-btn";
+  dlBtn.title = "Download";
+  dlBtn.disabled = item.status !== "done";
+  dlBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  dlBtn.addEventListener("click", () => downloadBlob(item.outBlob, item.outName));
+  actions.appendChild(dlBtn);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "icon-btn";
+  delBtn.title = "Remove";
+  delBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+  delBtn.addEventListener("click", () => {
+    URL.revokeObjectURL(item.url);
+    if (item.outUrl) URL.revokeObjectURL(item.outUrl);
+    imgItems = imgItems.filter(i => i.id !== item.id);
+    renderImgList();
+  });
+  actions.appendChild(delBtn);
+
+  card.appendChild(actions);
+  return card;
+}
+
+function downloadBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function classifyImageFile(file) {
+  const name = (file.name || "").toLowerCase();
+  const type = (file.type || "").toLowerCase();
+  if (type === "image/heic" || type === "image/heif" || /\.(heic|heif)$/.test(name)) return "heic";
+  if (type === "image/tiff" || /\.(tif|tiff)$/.test(name)) return "tiff";
+  if (type === "image/svg+xml" || /\.svg$/.test(name)) return "svg";
+  return "standard";
+}
+
+function parseSvgDims(svgText) {
+  const widthMatch = svgText.match(/<svg[^>]*\swidth=["']([\d.]+)/i);
+  const heightMatch = svgText.match(/<svg[^>]*\sheight=["']([\d.]+)/i);
+  if (widthMatch && heightMatch) return { w: parseFloat(widthMatch[1]), h: parseFloat(heightMatch[1]) };
+  const viewBoxMatch = svgText.match(/viewBox=["']\s*[\d.\-]+[ ,]+[\d.\-]+[ ,]+([\d.\-]+)[ ,]+([\d.\-]+)\s*["']/i);
+  if (viewBoxMatch) return { w: parseFloat(viewBoxMatch[1]), h: parseFloat(viewBoxMatch[2]) };
+  return { w: 1024, h: 1024 };
+}
+
+function loadStandardImage(file) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const bmp = await createImageBitmap(file);
+      if (bmp.width > 0 && bmp.height > 0) { resolve(bmp); return; }
+    } catch {}
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) { resolve(img); return; }
+      try {
+        const dims = parseSvgDims(await file.text());
+        img._forcedWidth = dims.w; img._forcedHeight = dims.h;
+      } catch {
+        img._forcedWidth = 1024; img._forcedHeight = 1024;
+      }
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function loadTiffAsCanvas(file) {
+  const buf = await file.arrayBuffer();
+  const ifds = UTIF.decode(buf);
+  UTIF.decodeImage(buf, ifds[0]);
+  const rgba = UTIF.toRGBA8(ifds[0]);
+  const w = ifds[0].width, h = ifds[0].height;
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), w, h), 0, 0);
+  return canvas;
+}
+
+async function loadBitmapFrom(file) {
+  const kind = classifyImageFile(file);
+  if (kind === "heic") {
+    const result = await heic2any({ blob: file, toType: "image/png" });
+    const pngBlob = Array.isArray(result) ? result[0] : result;
+    return await loadStandardImage(pngBlob);
+  }
+  if (kind === "tiff") {
+    return await loadTiffAsCanvas(file);
+  }
+  if (kind === "svg") {
+    const bitmap = await loadStandardImage(file);
+    try {
+      const dims = parseSvgDims(await file.text());
+      bitmap._forcedWidth = dims.w;
+      bitmap._forcedHeight = dims.h;
+    } catch {}
+    return bitmap;
+  }
+  return await loadStandardImage(file);
+}
+
+function getDims(bitmap) {
+  const w = bitmap._forcedWidth || bitmap.naturalWidth || bitmap.width || 1024;
+  const h = bitmap._forcedHeight || bitmap.naturalHeight || bitmap.height || 1024;
+  return { w, h };
+}
+
+function makeIcoFromPng(pngBytes, width, height) {
+  const header = new DataView(new ArrayBuffer(6));
+  header.setUint16(0, 0, true);
+  header.setUint16(2, 1, true);
+  header.setUint16(4, 1, true);
+
+  const entry = new DataView(new ArrayBuffer(16));
+  entry.setUint8(0, width >= 256 ? 0 : width);
+  entry.setUint8(1, height >= 256 ? 0 : height);
+  entry.setUint8(2, 0);
+  entry.setUint8(3, 0);
+  entry.setUint16(4, 1, true);
+  entry.setUint16(6, 32, true);
+  entry.setUint32(8, pngBytes.length, true);
+  entry.setUint32(12, 22, true);
+
+  return new Blob([header.buffer, entry.buffer, pngBytes], { type: "image/x-icon" });
+}
+
+async function convertOneImage(item) {
+  item.status = "converting";
+  renderImgList();
+
+  const format = imgFormat.value;
+  const quality = parseInt(imgQuality.value, 10) / 100;
+  const resizeMode = imgResizeMode.value;
+  const resizeValue = parseFloat(imgResizeValue.value);
+
+  try {
+    const bitmap = await loadBitmapFrom(item.file);
+    let { w, h } = getDims(bitmap);
+
+    if (resizeMode !== "none" && resizeValue > 0) {
+      if (resizeMode === "width") { const nw = Math.min(w, resizeValue); h = Math.round(h * (nw / w)); w = Math.round(nw); }
+      else if (resizeMode === "height") { const nh = Math.min(h, resizeValue); w = Math.round(w * (nh / h)); h = Math.round(nh); }
+      else if (resizeMode === "percent") { const s = resizeValue / 100; w = Math.round(w * s); h = Math.round(h * s); }
+    }
+
+    if (format === "ico" && (w > 256 || h > 256)) {
+      const s = Math.min(256 / w, 256 / h);
+      w = Math.max(1, Math.round(w * s));
+      h = Math.max(1, Math.round(h * s));
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, w, h);
+
+    let blob;
+    if (format === "ico") {
+      const pngBlob = await new Promise(res => canvas.toBlob(res, "image/png"));
+      blob = makeIcoFromPng(new Uint8Array(await pngBlob.arrayBuffer()), w, h);
+    } else {
+      const mime = format === "png" ? "image/png" : format === "jpg" ? "image/jpeg" : format === "avif" ? "image/avif" : "image/webp";
+      blob = await new Promise(res => canvas.toBlob(res, mime, format === "png" ? undefined : quality));
+      if (!blob) throw new Error(`This browser can't encode ${format.toUpperCase()}`);
+      if (blob.type && blob.type !== mime) throw new Error(`This browser can't encode ${format.toUpperCase()} — it silently substituted ${blob.type}`);
+    }
+
+    const baseName = item.file.name.replace(/\.[^.]+$/, "");
+    item.outBlob = blob;
+    item.outUrl = URL.createObjectURL(blob);
+    item.outSize = blob.size;
+    item.outName = `${baseName}.${format}`;
+    item.status = "done";
+  } catch (err) {
+    console.error(err);
+    item.status = "error";
+  }
+  renderImgList();
+}
+
+imgConvertBtn.addEventListener("click", async () => {
+  imgConvertBtn.disabled = true;
+  for (const item of imgItems) {
+    if (item.status === "done") continue;
+    await convertOneImage(item);
+  }
+  imgConvertBtn.disabled = false;
+  showToast("Conversion complete");
+});
+
+imgZipBtn.addEventListener("click", async () => {
+  const done = imgItems.filter(i => i.status === "done");
+  if (!done.length) return;
+  const entries = await Promise.all(done.map(async i => ({
+    name: i.outName,
+    data: new Uint8Array(await i.outBlob.arrayBuffer())
+  })));
+  const zip = makeZip(entries);
+  downloadBlob(zip, "converted-images.zip");
+});
+
+/* ================================================================
+ * VIDEO CONVERTER
+ * ================================================================ */
+let vidItems = [];
+let vidNextId = 0;
+let ffmpegInstance = null;
+let ffmpegLoadingPromise = null;
+
+const vidDropZone = document.getElementById("vidDropZone");
+const vidFileInput = document.getElementById("vidFileInput");
+const vidFileList = document.getElementById("vidFileList");
+const vidEmptyHint = document.getElementById("vidEmptyHint");
+const vidStats = document.getElementById("vidStats");
+const vidConvertBtn = document.getElementById("vidConvertBtn");
+const vidClearBtn = document.getElementById("vidClearBtn");
+const vidAddMoreBtn = document.getElementById("vidAddMoreBtn");
+const vidFormat = document.getElementById("vidFormat");
+const vidCrf = document.getElementById("vidCrf");
+const vidCrfVal = document.getElementById("vidCrfVal");
+const vidCrfField = document.getElementById("vidCrfField");
+const vidPreset = document.getElementById("vidPreset");
+const vidPresetField = document.getElementById("vidPresetField");
+const vidWidth = document.getElementById("vidWidth");
+const vidTrimStart = document.getElementById("vidTrimStart");
+const vidTrimEnd = document.getElementById("vidTrimEnd");
+const vidMute = document.getElementById("vidMute");
+
+vidCrf.addEventListener("input", () => vidCrfVal.textContent = vidCrf.value);
+vidFormat.addEventListener("change", () => {
+  const isGif = vidFormat.value === "gif";
+  vidPresetField.style.display = isGif ? "none" : "";
+  vidCrfField.style.display = isGif ? "none" : "";
+});
+
+vidDropZone.addEventListener("click", () => vidFileInput.click());
+vidDropZone.addEventListener("dragover", e => { e.preventDefault(); vidDropZone.classList.add("drag-over"); });
+vidDropZone.addEventListener("dragleave", () => vidDropZone.classList.remove("drag-over"));
+vidDropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  vidDropZone.classList.remove("drag-over");
+  addVideoFiles(e.dataTransfer.files);
+});
+vidFileInput.addEventListener("change", e => { addVideoFiles(e.target.files); vidFileInput.value = ""; });
+vidAddMoreBtn.addEventListener("click", () => vidFileInput.click());
+vidClearBtn.addEventListener("click", () => {
+  vidItems.forEach(it => { URL.revokeObjectURL(it.url); if (it.outUrl) URL.revokeObjectURL(it.outUrl); });
+  vidItems = [];
+  renderVidList();
+});
+
+function addVideoFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith("video/") || /\.(mp4|mov|webm|avi|mkv|flv|wmv|3gp|mpg|mpeg|m4v)$/i.test(f.name));
+  if (!files.length) return;
+  files.forEach(file => {
+    vidItems.push({
+      id: vidNextId++, file, url: URL.createObjectURL(file),
+      status: "queued", progress: 0, outBlob: null, outUrl: null, outSize: null, outName: null, log: []
+    });
+  });
+  renderVidList();
+}
+
+function renderVidList() {
+  const has = vidItems.length > 0;
+  vidEmptyHint.style.display = has ? "none" : "";
+  vidConvertBtn.style.display = has ? "" : "none";
+  vidClearBtn.style.display = has ? "" : "none";
+  vidAddMoreBtn.style.display = has ? "" : "none";
+
+  const totalOriginal = vidItems.reduce((s, i) => s + i.file.size, 0);
+  const doneCount = vidItems.filter(i => i.status === "done").length;
+  vidStats.textContent = has
+    ? `${vidItems.length} file${vidItems.length > 1 ? "s" : ""} · ${fmtSize(totalOriginal)}${doneCount ? ` · ${doneCount} converted` : ""}`
+    : "No files loaded";
+
+  vidFileList.innerHTML = "";
+  vidItems.forEach(item => vidFileList.appendChild(buildVidCard(item)));
+}
+
+function buildVidCard(item) {
+  const card = document.createElement("div");
+  card.className = "file-card";
+  card.style.flexWrap = "wrap";
+  card.style.alignItems = "flex-start";
+
+  const thumb = document.createElement("div");
+  thumb.className = "file-thumb";
+  const vid = document.createElement("video");
+  vid.src = item.url; vid.muted = true;
+  thumb.appendChild(vid);
+  card.appendChild(thumb);
+
+  const info = document.createElement("div");
+  info.className = "file-info";
+  const name = document.createElement("div");
+  name.className = "file-name";
+  name.textContent = item.file.name;
+  info.appendChild(name);
+
+  const meta = document.createElement("div");
+  meta.className = "file-meta";
+  meta.innerHTML = `<span>${fmtSize(item.file.size)}</span>`;
+  if (item.status === "done") {
+    const savedPct = Math.round((1 - item.outSize / item.file.size) * 100);
+    meta.innerHTML += `<span class="arrow">→</span><span class="new-size">${fmtSize(item.outSize)}</span>` +
+      (savedPct > 0 ? `<span class="saved">-${savedPct}%</span>` : "");
+  }
+  info.appendChild(meta);
+
+  if (item.status === "converting") {
+    const bar = document.createElement("div");
+    bar.className = "progress-bar";
+    const fill = document.createElement("div");
+    fill.className = "progress-bar-fill";
+    fill.style.width = Math.round(item.progress * 100) + "%";
+    bar.appendChild(fill);
+    info.appendChild(bar);
+  }
+
+  if (item.log.length) {
+    const toggle = document.createElement("span");
+    toggle.className = "log-toggle";
+    toggle.textContent = "log";
+    const logBox = document.createElement("div");
+    logBox.className = "log-box";
+    logBox.textContent = item.log.join("\n");
+    toggle.addEventListener("click", () => logBox.classList.toggle("open"));
+    info.appendChild(toggle);
+    info.appendChild(logBox);
+  }
+
+  card.appendChild(info);
+
+  const statusTag = document.createElement("span");
+  statusTag.className = "status-tag" + (item.status === "done" ? " done" : item.status === "converting" ? " working" : item.status === "error" ? " error" : "");
+  statusTag.textContent = item.status === "queued" ? "Queued" : item.status === "converting" ? `Converting ${Math.round(item.progress * 100)}%` : item.status === "done" ? "Done" : "Error";
+  card.appendChild(statusTag);
+
+  const actions = document.createElement("div");
+  actions.className = "file-actions";
+
+  const dlBtn = document.createElement("button");
+  dlBtn.className = "icon-btn";
+  dlBtn.title = "Download";
+  dlBtn.disabled = item.status !== "done";
+  dlBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  dlBtn.addEventListener("click", () => downloadBlob(item.outBlob, item.outName));
+  actions.appendChild(dlBtn);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "icon-btn";
+  delBtn.title = "Remove";
+  delBtn.disabled = item.status === "converting";
+  delBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+  delBtn.addEventListener("click", () => {
+    URL.revokeObjectURL(item.url);
+    if (item.outUrl) URL.revokeObjectURL(item.outUrl);
+    vidItems = vidItems.filter(i => i.id !== item.id);
+    renderVidList();
+  });
+  actions.appendChild(delBtn);
+
+  card.appendChild(actions);
+  return card;
+}
+
+let activeVidItem = null;
+
+async function getFFmpeg() {
+  if (ffmpegInstance) return ffmpegInstance;
+  if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
+  if (!window.__ffmpegModule) {
+    throw new Error("Video engine unavailable — this browser/context couldn't load the ES module the video tool needs. Reload the page, and try Chrome if the problem persists.");
+  }
+  document.getElementById("engineNote").textContent = "Loading conversion engine… (first time only)";
+  ffmpegLoadingPromise = (async () => {
+    const { FFmpeg } = window.__ffmpegModule;
+    const inst = new FFmpeg();
+    inst.on("log", ({ message }) => { if (activeVidItem) activeVidItem.log.push(message); });
+    inst.on("progress", ({ progress }) => {
+      if (activeVidItem) {
+        activeVidItem.progress = Math.max(0, Math.min(1, progress || 0));
+        renderVidList();
+      }
+    });
+    await inst.load({
+      coreURL: new URL("../vendor/core/ffmpeg-core.js", document.baseURI).href,
+      wasmURL: new URL("../vendor/core/ffmpeg-core.wasm", document.baseURI).href,
+    });
+    ffmpegInstance = inst;
+    document.getElementById("engineNote").textContent = "Conversion engine ready.";
+    return inst;
+  })();
+  return ffmpegLoadingPromise;
+}
+
+function getExt(name) {
+  const m = name.match(/\.[^.]+$/);
+  return m ? m[0] : ".mp4";
+}
+
+async function convertOneVideo(item) {
+  item.status = "converting";
+  item.progress = 0;
+  item.log = [];
+  renderVidList();
+
+  const format = vidFormat.value;
+  const crf = vidCrf.value;
+  const preset = vidPreset.value;
+  const width = parseInt(vidWidth.value, 10);
+  const mute = vidMute.checked;
+  const trimStart = vidTrimStart.value.trim();
+  const trimEnd = vidTrimEnd.value.trim();
+
+  try {
+    const ffmpeg = await getFFmpeg();
+    activeVidItem = item;
+
+    const inputName = "input" + getExt(item.file.name);
+    await ffmpeg.writeFile(inputName, await window.__ffmpegModule.fetchFile(item.file));
+
+    const pre = [];
+    const post = [];
+    if (trimStart) pre.push("-ss", trimStart);
+    if (trimStart && trimEnd) {
+      const dur = parseFloat(trimEnd) - parseFloat(trimStart);
+      if (dur > 0) post.push("-t", String(dur));
+    } else if (trimEnd) {
+      post.push("-t", trimEnd);
+    }
+
+    let outputName;
+
+    if (format === "gif") {
+      const fps = 12;
+      const scale = width > 0 ? `scale=${width}:-1:flags=lanczos` : `scale=480:-1:flags=lanczos`;
+      await ffmpeg.exec([...pre, "-i", inputName, ...post, "-vf", `fps=${fps},${scale},palettegen`, "palette.png"]);
+      outputName = "output.gif";
+      await ffmpeg.exec([...pre, "-i", inputName, ...post, "-i", "palette.png", "-lavfi", `fps=${fps},${scale}[x];[x][1:v]paletteuse`, outputName]);
+    } else {
+      const vf = width > 0 ? ["-vf", `scale=${width}:-2`] : [];
+      const args = [...pre, "-i", inputName, ...post, ...vf];
+      if (format === "mp4") {
+        outputName = "output.mp4";
+        args.push("-c:v", "libx264", "-crf", crf, "-preset", preset, "-pix_fmt", "yuv420p");
+        if (mute) args.push("-an"); else args.push("-c:a", "aac", "-b:a", "128k");
+      } else {
+        outputName = "output.webm";
+        args.push("-c:v", "libvpx-vp9", "-crf", crf, "-b:v", "0", "-deadline", "good", "-cpu-used", "2");
+        if (mute) args.push("-an"); else args.push("-c:a", "libopus");
+      }
+      args.push(outputName);
+      await ffmpeg.exec(args);
+    }
+
+    const data = await ffmpeg.readFile(outputName);
+    const mime = format === "mp4" ? "video/mp4" : format === "webm" ? "video/webm" : "image/gif";
+    const blob = new Blob([data.buffer], { type: mime });
+
+    const baseName = item.file.name.replace(/\.[^.]+$/, "");
+    item.outBlob = blob;
+    item.outUrl = URL.createObjectURL(blob);
+    item.outSize = blob.size;
+    item.outName = `${baseName}_converted.${format}`;
+    item.status = "done";
+    item.progress = 1;
+
+    try {
+      await ffmpeg.deleteFile(inputName);
+      await ffmpeg.deleteFile(outputName);
+      if (format === "gif") await ffmpeg.deleteFile("palette.png");
+    } catch {}
+  } catch (err) {
+    console.error(err);
+    item.log.push(String(err));
+    item.status = "error";
+  }
+  activeVidItem = null;
+  renderVidList();
+}
+
+vidConvertBtn.addEventListener("click", async () => {
+  vidConvertBtn.disabled = true;
+  for (const item of vidItems) {
+    if (item.status === "done") continue;
+    await convertOneVideo(item);
+  }
+  vidConvertBtn.disabled = false;
+  showToast("Conversion complete");
+});
+</script>
+
+</body>
+</html>

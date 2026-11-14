@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animator — Studio</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+  body { padding: 96px 16px 60px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .page-head { margin-bottom: 20px; }
+  .page-head h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.3px; }
+  .page-head p { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+  .engine-note {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  /* ─── Drop zone ─────────────────────────────────────────── */
+  .drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 46px 24px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 200ms, background 200ms;
+    margin-bottom: 18px;
+  }
+  .drop-zone.drag-over { border-color: var(--fg); background: rgba(128,128,128,0.06); }
+  .drop-zone svg { width: 28px; height: 28px; opacity: 0.4; }
+  .drop-zone .hint { font-size: 11px; opacity: 0.7; }
+  input[type="file"] { display: none; }
+
+  .thumb-strip { display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .thumb-strip.show { display: flex; }
+  .thumb {
+    position: relative;
+    width: 72px; height: 72px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--placeholder);
+    border: 1px solid var(--border);
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .order { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.6); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 100px; }
+  .thumb .remove {
+    position: absolute; top: 4px; right: 4px;
+    width: 18px; height: 18px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.6); color: #fff;
+    font-size: 11px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .thumb.add-more { display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); font-size: 20px; }
+  .thumb.add-more:hover { color: var(--fg); }
+
+  /* ─── Preset picker ─────────────────────────────────────── */
+  .preset-section { display: none; }
+  .preset-section.show { display: block; }
+  .preset-group-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .preset-group-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted);
+  }
+  .preset-group-note { font-size: 10.5px; color: var(--muted); opacity: 0.75; }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 980px) { .preset-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 620px) { .preset-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .preset-card {
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    transition: box-shadow 200ms, border-color 200ms;
+  }
+  .preset-card:hover { box-shadow: var(--hover-shadow); }
+  .preset-card.active { border-color: var(--fg); }
+  .preset-card.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .preset-card h3 { font-size: 12.5px; font-weight: 600; margin: 0 0 3px; }
+  .preset-card p { font-size: 10.5px; color: var(--muted); margin: 0; line-height: 1.35; }
+
+  /* ─── Workspace ─────────────────────────────────────────── */
+  .workspace { display: none; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .workspace.show { display: flex; }
+
+  .sidebar {
+    width: 290px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .params-group { display: none; flex-direction: column; gap: 13px; }
+  .params-group.active { display: flex; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  .field label .val { color: var(--fg); text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .field select, .field input[type="number"] {
+    padding: 7px 10px; font-size: 12.5px; font-family: var(--font);
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--fg); outline: none; width: 100%;
+  }
+  .field input[type="range"] {
+    width: 100%; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: var(--border); border-radius: 2px; outline: none;
+  }
+  .field input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--fg); cursor: grab;
+  }
+  .field input[type="color"] {
+    width: 100%; height: 30px; padding: 0;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: none; cursor: pointer;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+  .section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted);
+  }
+  .readout { font-size: 11.5px; color: var(--muted); }
+
+  .check-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .check-row input { margin: 0; }
+
+  .look-toggle-head {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+  }
+  .look-body { display: none; flex-direction: column; gap: 13px; margin-top: 4px; }
+  .look-body.open { display: flex; }
+  .look-chevron { font-size: 10px; color: var(--muted); transition: transform 200ms; }
+  .look-chevron.open { transform: rotate(90deg); }
+
+  /* ─── Preview area ──────────────────────────────────────── */
+  .preview-area {
+    flex: 1; min-width: 320px;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .preview-canvas-wrap {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    min-height: 260px;
+  }
+  #previewCanvas { max-width: 100%; max-height: 58vh; display: block; border-radius: 4px; }
+  .export-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .rendering-note { font-size: 11px; color: var(--muted); min-height: 14px; text-align: center; }
+  .progress-bar { width: 100%; max-width: 320px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--fg); width: 0%; transition: width 150ms; }
+
+  @media (max-width: 720px) { .sidebar { width: 100%; } }
+</style>
+<link rel="stylesheet" href="/tools/skin.css"><!-- last: the shared look wins -->
+</head>
+<body>
+
+<div class="hub-nav">
+  <div class="hub-pill">
+    <a href="/">Studio</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/layout/index.html">Layout</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/converter/index.html">Converter</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/animator/index.html" class="active">Animator</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/pixel/index.html">Pixel</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/logo/index.html">Logo</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/gradient/index.html">Gradient</a>
+    <span class="sep">&middot;</span>
+    <a href="/tools/paths/index.html">Paths</a>
+  </div>
+  <button class="theme-toggle-btn" id="themeToggle" title="Toggle theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>Animator</h1>
+    <p>Turn images into a seamlessly-looping preview clip. 25 presets plus a stackable film-look layer.</p>
+  </div>
+
+
+  <div id="dropZone" class="drop-zone">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <p>Drop one or more images here, or click to browse</p>
+    <p class="hint">Single-image presets use the first image · multi-image presets cycle through all of them, in order</p>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+
+  <div class="thumb-strip" id="thumbStrip"></div>
+
+  <div class="preset-section" id="presetSection">
+    <div class="preset-group-head">
+      <span class="preset-group-label">Single Image</span>
+      <span class="preset-group-note">ambient motion on one image</span>
+    </div>
+    <div class="preset-grid" id="presetGridSingle"></div>
+
+    <div class="preset-group-head">
+      <span class="preset-group-label">Multiple Images</span>
+      <span class="preset-group-note" id="multiNote">transitions between images — needs 2+</span>
+    </div>
+    <div class="preset-grid" id="presetGridMulti"></div>
+  </div>
+
+  <div class="workspace" id="workspace">
+    <div class="sidebar">
+      <div id="paramsHost"></div>
+
+      <div class="divider"></div>
+      <div class="look-toggle-head" id="lookToggleHead">
+        <span class="section-label">Film Look <span id="lookActiveCount" style="color:var(--fg);"></span></span>
+        <span class="look-chevron" id="lookChevron">›</span>
+      </div>
+      <div class="look-body" id="lookBody"></div>
+
+      <div class="divider"></div>
+      <span class="section-label">Frame</span>
+      <div class="field">
+        <label>Aspect Ratio</label>
+        <select id="aspectRatio">
+          <option value="original">Original (first image)</option>
+          <option value="1:1">Square 1:1</option>
+          <option value="4:5">Portrait 4:5</option>
+          <option value="3:2">Landscape 3:2</option>
+          <option value="4:3">4:3</option>
+          <option value="16:9">Widescreen 16:9</option>
+        </select>
+      </div>
+      <div class="field"><label>Export Width <span class="val" id="exportWidthVal">1280px</span></label><input type="range" id="exportWidth" min="320" max="2560" step="20" value="1280"></div>
+      <div class="field">
+        <label>Frame Rate</label>
+        <select id="fpsSelect">
+          <option value="24">24 fps</option>
+          <option value="30" selected>30 fps</option>
+          <option value="60">60 fps</option>
+        </select>
+      </div>
+      <button class="pill-btn" id="randomizeBtn">Surprise Me</button>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-canvas-wrap">
+        <canvas id="previewCanvas"></canvas>
+      </div>
+      <div class="rendering-note" id="renderingNote"></div>
+      <div class="progress-bar" id="progressBar" style="display:none;"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="export-row">
+        <button class="pill-btn pill-btn-primary" id="exportMp4Btn">Download MP4</button>
+        <button class="pill-btn" id="exportWebmBtn">Download WebM</button>
+        <button class="pill-btn" id="exportGifBtn">Download GIF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--tag-bg);color:var(--tag-fg);padding:10px 20px;border-radius:100px;font-size:12px;font-weight:500;opacity:0;transition:transform 400ms var(--ease-out),opacity 400ms;pointer-events:none;z-index:600;"></div>
+
+<script type="module">
+// Isolated on purpose: only this tiny block needs an ES module (ffmpeg.wasm's
+// worker requires it). Shares the vendored engine in tools/vendor instead of
+// duplicating ~31MB. If this fails, only export breaks — everything else below
+// runs as a plain classic script.
+import { FFmpeg } from "../vendor/ffmpeg/index.js";
+import { fetchFile } from "../vendor/util/index.js";
+window.__ffmpegModule = { FFmpeg, fetchFile };
+</script>
+
+<script>
+/* ================================================================
+ * THEME (synced with hub via localStorage)
+ * ================================================================ */
+const root = document.documentElement;
+const themeIcon = document.getElementById("themeIcon");
+const sunPath = `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>`;
+const moonPath = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+function applyThemeIcon() { themeIcon.innerHTML = root.getAttribute("data-theme") === "dark" ? sunPath : moonPath; }
+const savedTheme = localStorage.getItem("vegar-tools-theme");
+if (savedTheme) root.setAttribute("data-theme", savedTheme);
+applyThemeIcon();
+document.getElementById("themeToggle").addEventListener("click", () => {
+  const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("vegar-tools-theme", next);
+  applyThemeIcon();
+});
+
+/* ================================================================
+ * TOAST
+ * ================================================================ */
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function showToast(msg, ms = 2400) {
+  toastEl.textContent = msg;
+  toastEl.style.transform = "translateX(-50%) translateY(0)";
+  toastEl.style.opacity = "1";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.style.transform = "translateX(-50%) translateY(60px)"; toastEl.style.opacity = "0"; }, ms);
+}
+
+/* ================================================================
+ * EASING
+ * Portfolio/editorial motion favours long sine & cubic ease-in-out for
+ * ambient movement, with snappy curves reserved for the transition itself.
+ * easeOutBack overshoots past 1 by design — callers must clamp.
+ * ================================================================ */
+const Easing = {
+  linear: t => t,
+  easeInOutQuad: t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+  easeInOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  easeInOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
+  easeOutCubic: t => 1 - Math.pow(1 - t, 3),
+  easeOutQuint: t => 1 - Math.pow(1 - t, 5),
+  easeInCubic: t => t * t * t,
+  easeOutBack: t => {
+    const c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  },
+};
+// Symmetric 0->1->0 ramp, guaranteeing the loop's first and last frame match.
+function yoyo(t) { return t < 0.5 ? t * 2 : (1 - t) * 2; }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+/* ================================================================
+ * SCRATCH CANVAS POOL
+ * Compositing effects need offscreen layers. Allocating a canvas per
+ * frame churns memory hard during export (thousands of frames), so
+ * layers are pooled by key and reused at the right size.
+ * ================================================================ */
+const _scratch = {};
+function scratch(key, w, h) {
+  let c = _scratch[key];
+  if (!c) { c = _scratch[key] = document.createElement("canvas"); }
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+  ctx.clearRect(0, 0, w, h);
+  return { c, ctx };
+}
+
+/* ================================================================
+ * IMAGE LOADING
+ * ================================================================ */
+let images = [];
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const thumbStrip = document.getElementById("thumbStrip");
+const presetSection = document.getElementById("presetSection");
+const workspaceEl = document.getElementById("workspace");
+const previewCanvas = document.getElementById("previewCanvas");
+const renderingNote = document.getElementById("renderingNote");
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
+  addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener("change", e => { addFiles(e.target.files); fileInput.value = ""; });
+
+async function addFiles(fileList) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith("image/"));
+  if (!files.length) return;
+  for (const f of files) images.push(await createImageBitmap(f));
+  onImagesChanged();
+}
+
+function removeImage(index) {
+  images.splice(index, 1);
+  onImagesChanged();
+}
+
+function onImagesChanged() {
+  const has = images.length > 0;
+  dropZone.style.display = has ? "none" : "";
+  thumbStrip.classList.toggle("show", has);
+  presetSection.classList.toggle("show", has);
+  workspaceEl.classList.toggle("show", has);
+
+  thumbStrip.innerHTML = "";
+  images.forEach((bmp, i) => {
+    const t = document.createElement("div");
+    t.className = "thumb";
+    const c = document.createElement("canvas");
+    c.width = 72; c.height = 72;
+    drawCover(c.getContext("2d"), bmp, 72, 72, 1, 0, 0);
+    const img = document.createElement("img");
+    img.src = c.toDataURL();
+    t.appendChild(img);
+    const order = document.createElement("span");
+    order.className = "order";
+    order.textContent = i + 1;
+    t.appendChild(order);
+    const rm = document.createElement("button");
+    rm.className = "remove";
+    rm.textContent = "×";
+    rm.addEventListener("click", () => removeImage(i));
+    t.appendChild(rm);
+    thumbStrip.appendChild(t);
+  });
+  const addMore = document.createElement("div");
+  addMore.className = "thumb add-more";
+  addMore.textContent = "+";
+  addMore.addEventListener("click", () => fileInput.click());
+  thumbStrip.appendChild(addMore);
+
+  updatePresetAvailability();
+  updateReadouts();
+  driveTick();
+}
+
+/* ================================================================
+ * DRAWING HELPERS
+ * ================================================================ */
+function drawCover(ctx, bmp, canvasW, canvasH, scale, panX, panY) {
+  const iw = bmp.width, ih = bmp.height;
+  const canvasRatio = canvasW / canvasH, imgRatio = iw / ih;
+  const baseScale = imgRatio > canvasRatio ? canvasH / ih : canvasW / iw;
+  const finalScale = baseScale * scale;
+  const drawW = iw * finalScale, drawH = ih * finalScale;
+  const maxPanX = Math.max(0, (drawW - canvasW) / 2);
+  const maxPanY = Math.max(0, (drawH - canvasH) / 2);
+  const dx = (canvasW - drawW) / 2 + panX * maxPanX;
+  const dy = (canvasH - drawH) / 2 + panY * maxPanY;
+  ctx.drawImage(bmp, dx, dy, drawW, drawH);
+}
+
+// A cover-drawn image on its own pooled layer — the building block for
+// every effect that needs to transform or composite a whole frame.
+function imageLayer(key, bmp, w, h, scale = 1, panX = 0, panY = 0) {
+  const { c, ctx } = scratch(key, w, h);
+  drawCover(ctx, bmp, w, h, scale, panX, panY);
+  return c;
+}
+
+function resetCtxState(ctx, w, h) {
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+  ctx.clearRect(0, 0, w, h);
+}
+
+// Additive RGB recomposition: max/sum of an R-only, G-only and B-only copy
+// reproduces the original exactly at zero offset, and splits into coloured
+// fringes as the offset grows — real chromatic aberration, not a hue trick.
+function drawRgbSplit(ctx, bmp, w, h, offset, angle) {
+  const dx = Math.cos(angle) * offset, dy = Math.sin(angle) * offset;
+  const chans = [["#ff0000", -dx, -dy], ["#00ff00", 0, 0], ["#0000ff", dx, dy]];
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const [color, ox, oy] of chans) {
+    const { c, ctx: cc } = scratch("rgb" + color, w, h);
+    drawCover(cc, bmp, w, h, 1, 0, 0);
+    cc.globalCompositeOperation = "multiply";
+    cc.fillStyle = color;
+    cc.fillRect(0, 0, w, h);
+    ctx.drawImage(c, ox, oy);
+  }
+  ctx.restore();
+}
+
+// Luminance -> two-colour gradient map. Multiply pulls whites toward the
+// highlight colour, lighten lifts blacks to the shadow colour.
+function duotoneLayer(key, bmp, w, h, shadowHex, highlightHex) {
+  const { c, ctx } = scratch(key, w, h);
+  ctx.filter = "grayscale(1) contrast(1.08)";
+  drawCover(ctx, bmp, w, h, 1, 0, 0);
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = highlightHex;
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "lighten";
+  ctx.fillStyle = shadowHex;
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "source-over";
+  return c;
+}
+
+// Horizontal-strip displacement. Strip height trades fidelity for speed;
+// 4px keeps per-frame draw calls in the low hundreds even at export size.
+// `src` is expected to be overscanned (see waveSource) so shifted strips
+// never expose the transparent edge of the layer.
+function drawWaveDistort(ctx, src, w, h, amp, freq, phase, bleed = 0) {
+  const STRIP = 4;
+  for (let y = 0; y < h; y += STRIP) {
+    const sh = Math.min(STRIP, h - y);
+    const off = amp * Math.sin((y / h) * freq * Math.PI * 2 + phase);
+    // src is drawn at (w + 2*bleed) wide anchored at -bleed.
+    ctx.drawImage(src, 0, y + bleed, src.width, sh, off - bleed, y, src.width, sh);
+  }
+}
+
+// A cover layer with `bleed` extra pixels of real image on every side.
+// The framing must stay identical to a plain drawCover(w, h) or the frame
+// visibly pops whenever a preset switches between the two paths — so the
+// image is cover-fitted to (w, h) and only then zoomed just enough to fill
+// the margin, rather than being cover-fitted to the larger canvas.
+function bleedZoom(w, h, bleed) { return 1 + (2 * bleed) / Math.min(w, h); }
+function bleedLayer(key, bmp, w, h, bleed) {
+  const { c, ctx } = scratch(key, w + bleed * 2, h + bleed * 2);
+  ctx.translate(bleed, bleed);
+  drawCover(ctx, bmp, w, h, bleedZoom(w, h, bleed), 0, 0);
+  return c;
+}
+
+// Blur bleeds transparency inward from the layer edge. Scaling the source
+// up so the soft boundary falls outside the visible frame keeps edges opaque.
+function drawCoverBlurred(ctx, bmp, w, h, blurPx, scale = 1, panX = 0, panY = 0) {
+  const overscan = blurPx > 0 ? 1 + (3 * blurPx) / Math.min(w, h) : 1;
+  ctx.save();
+  ctx.filter = blurPx > 0 ? `blur(${blurPx.toFixed(1)}px)` : "none";
+  drawCover(ctx, bmp, w, h, scale * overscan, panX, panY);
+  ctx.restore();
+  ctx.filter = "none";
+}
+
+let _noiseTile = null;
+function noiseTile() {
+  if (_noiseTile) return _noiseTile;
+  const size = 128;
+  const c = document.createElement("canvas");
+  c.width = size; c.height = size;
+  const ctx = c.getContext("2d");
+  const img = ctx.createImageData(size, size);
+  for (let i = 0; i < size * size; i++) {
+    const v = 128 + (Math.random() * 2 - 1) * 120;
+    img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+    img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  _noiseTile = c;
+  return c;
+}
+
+/* ================================================================
+ * MULTI-IMAGE CYCLE
+ * Which pair is on screen, and how far through the transition we are.
+ * Wrapping next = (idx+1) % n is what closes the loop seamlessly.
+ * ================================================================ */
+function cycleState(t, holdSec, transitionSec) {
+  const n = images.length;
+  const seg = holdSec + transitionSec;
+  const at = t * (n * seg);
+  const idx = Math.floor(at / seg) % n;
+  const within = at - idx * seg;
+  const progress = within > holdSec ? Math.min(1, (within - holdSec) / transitionSec) : 0;
+  return { n, idx, next: (idx + 1) % n, progress, within, seg };
+}
+
+/* ================================================================
+ * PARAM SCHEMA SHORTHANDS
+ * ================================================================ */
+const R = (label, min, max, step, def, fmt) => ({ type: "range", label, min, max, step, def, fmt });
+const S = (label, options, def) => ({ type: "select", label, options, def });
+const C = (label, def) => ({ type: "color", label, def });
+const secs = v => v.toFixed(2) + "s";
+const secs1 = v => v.toFixed(1) + "s";
+const mult = v => v.toFixed(2) + "×";
+const pct = v => Math.round(v) + "%";
+const px = v => Math.round(v) + "px";
+const deg = v => Math.round(v) + "°";
+
+// Research: images hold 60-75% of their segment, transitions land in the
+// snappy 0.25-0.5s range. These defaults follow that ratio.
+function multiParams(extra = {}, defHold = 1.6, defTrans = 0.45) {
+  return Object.assign({
+    hold: R("Hold per Image", 0.3, 4, 0.1, defHold, secs1),
+    trans: R("Transition", 0.12, 2, 0.02, defTrans, secs),
+  }, extra);
+}
+const DIRS_4 = [["left", "Left"], ["right", "Right"], ["up", "Up"], ["down", "Down"]];
+
+/* ================================================================
+ * PRESET REGISTRY
+ * Each preset declares its own params and render function; every piece
+ * of UI (cards, sliders, readouts) is generated from this list, so a new
+ * preset is one entry here and nothing else.
+ *   render(ctx, w, h, t, p) — t is normalised loop progress 0..1.
+ *   All presets are periodic by construction: single-image ones yoyo,
+ *   multi-image ones wrap through cycleState.
+ * ================================================================ */
+const PRESETS = [
+  /* ── Single image ─────────────────────────────────────────── */
+  {
+    id: "kenburns", name: "Ken Burns", group: "single",
+    desc: "Slow zoom and pan across the frame.",
+    params: {
+      duration: R("Duration", 2, 12, 0.5, 6, secs1),
+      zoom: R("Zoom Amount", 1, 1.5, 0.01, 1.12, mult),
+      pan: S("Pan Direction", [["none", "None (zoom only)"], ["lr", "Left ↔ Right"], ["tb", "Top ↔ Bottom"], ["diag", "Diagonal"]], "lr"),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const e = Easing.easeInOutSine(yoyo(t));
+      const scale = 1 + (p.zoom - 1) * e;
+      const pan = t < 0.5 ? t * 4 - 1 : 3 - t * 4;
+      let px = 0, py = 0;
+      if (p.pan === "lr") px = pan;
+      else if (p.pan === "tb") py = pan;
+      else if (p.pan === "diag") { px = pan; py = pan; }
+      drawCover(ctx, images[0], w, h, scale, px, py);
+    },
+  },
+  {
+    id: "pulse", name: "Zoom Pulse", group: "single",
+    desc: "Gentle breathing zoom. Good for logos.",
+    params: {
+      duration: R("Duration", 1, 8, 0.5, 3.5, secs1),
+      amount: R("Pulse Amount", 2, 30, 1, 7, pct),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const scale = 1 + (p.amount / 100) * Easing.easeInOutSine(yoyo(t));
+      drawCover(ctx, images[0], w, h, scale, 0, 0);
+    },
+  },
+  {
+    id: "elastic", name: "Elastic Zoom", group: "single",
+    desc: "Punchy spring zoom with overshoot.",
+    params: {
+      duration: R("Duration", 1, 6, 0.25, 2.5, secs),
+      zoom: R("Zoom Amount", 1.05, 1.6, 0.01, 1.2, mult),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const scale = Math.max(1, 1 + (p.zoom - 1) * Easing.easeOutBack(yoyo(t)));
+      drawCover(ctx, images[0], w, h, scale, 0, 0);
+    },
+  },
+  {
+    id: "parallax", name: "Parallax Drift", group: "single",
+    desc: "Blurred backdrop drifts behind a sharp layer.",
+    params: {
+      duration: R("Duration", 3, 12, 0.5, 7, secs1),
+      depth: R("Depth", 2, 30, 1, 12, pct),
+      blur: R("Backdrop Blur", 2, 40, 1, 18, px),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const bmp = images[0];
+      const swing = Math.sin(t * Math.PI * 2);
+      const d = p.depth / 100;
+      ctx.save();
+      ctx.filter = `blur(${p.blur}px)`;
+      drawCover(ctx, bmp, w, h, 1.25, swing * d, swing * d * 0.4);
+      ctx.restore();
+      ctx.filter = "none";
+      const fg = imageLayer("px_fg", bmp, w, h, 1.04, -swing * d * 0.5, 0);
+      ctx.drawImage(fg, 0, 0);
+    },
+  },
+  {
+    id: "sway", name: "Sway & Tilt", group: "single",
+    desc: "Slow rotational drift, handheld feel.",
+    params: {
+      duration: R("Duration", 3, 12, 0.5, 8, secs1),
+      angle: R("Tilt", 0.3, 4, 0.1, 1.2, v => v.toFixed(1) + "°"),
+      zoom: R("Base Zoom", 1.05, 1.4, 0.01, 1.12, mult),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const a = Math.sin(t * Math.PI * 2) * (p.angle * Math.PI / 180);
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(a);
+      ctx.translate(-w / 2, -h / 2);
+      drawCover(ctx, images[0], w, h, p.zoom, 0, 0);
+      ctx.restore();
+    },
+  },
+  {
+    id: "focus", name: "Focus Pull", group: "single",
+    desc: "Cinematic rack focus in and out.",
+    params: {
+      duration: R("Duration", 2, 10, 0.5, 5, secs1),
+      maxBlur: R("Max Blur", 2, 40, 1, 14, px),
+      zoom: R("Zoom", 1, 1.3, 0.01, 1.05, mult),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const e = Easing.easeInOutSine(yoyo(t));
+      drawCoverBlurred(ctx, images[0], w, h, (1 - e) * p.maxBlur, p.zoom, 0, 0);
+    },
+  },
+  {
+    id: "glitchpulse", name: "Glitch Pulse", group: "single",
+    desc: "Periodic RGB-split bursts.",
+    params: {
+      duration: R("Duration", 1, 8, 0.25, 3, secs),
+      bursts: R("Bursts per Loop", 1, 6, 1, 2, v => Math.round(v)),
+      intensity: R("Intensity", 2, 40, 1, 14, px),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      // Spike must be zero at BOTH ends of each burst period, otherwise the
+      // loop seam lands mid-glitch and jumps. sin^10 peaks hard mid-burst
+      // and returns to exactly 0 at phase 0 and 1.
+      const phase = (t * p.bursts) % 1;
+      const spike = Math.pow(Math.sin(phase * Math.PI), 10);
+      const offset = spike * p.intensity;
+      if (offset < 0.4) { drawCover(ctx, images[0], w, h, 1, 0, 0); return; }
+      drawRgbSplit(ctx, images[0], w, h, offset, 0);
+    },
+  },
+  {
+    id: "duotoneshift", name: "Duotone Shift", group: "single",
+    desc: "Fades between full colour and a duotone grade.",
+    params: {
+      duration: R("Duration", 2, 12, 0.5, 6, secs1),
+      shadow: C("Shadow Colour", "#1b2a4a"),
+      highlight: C("Highlight Colour", "#ff7a59"),
+      zoom: R("Zoom", 1, 1.3, 0.01, 1.06, mult),
+    },
+    loop: p => p.duration,
+    render(ctx, w, h, t, p) {
+      const bmp = images[0];
+      const mix = Easing.easeInOutSine(yoyo(t));
+      drawCover(ctx, bmp, w, h, p.zoom, 0, 0);
+      if (mix > 0.001) {
+        const duo = duotoneLayer("duo_single", bmp, w, h, p.shadow, p.highlight);
+        ctx.save();
+        ctx.globalAlpha = mix;
+        // Match the base layer's zoom so the two align while cross-mixing.
+        const sc = p.zoom;
+        ctx.drawImage(duo, (w - w * sc) / 2, (h - h * sc) / 2, w * sc, h * sc);
+        ctx.restore();
+      }
+    },
+  },
+
+  /* ── Multiple images ──────────────────────────────────────── */
+  {
+    id: "flipbook", name: "Frame by Frame", group: "multi",
+    desc: "Hard cuts between images. Stop-motion / flipbook.",
+    params: {
+      fps: R("Speed", 1, 24, 1, 6, v => Math.round(v) + " fps"),
+      order: S("Order", [["forward", "Forward loop"], ["pingpong", "Ping-pong"]], "forward"),
+    },
+    // Ping-pong walks out and back without repeating the end frames, so a
+    // 3-image set is A B C B — 2n-2 steps, still a clean wrap to A.
+    loop: (p, n) => (p.order === "pingpong" && n > 2 ? 2 * n - 2 : n) / p.fps,
+    render(ctx, w, h, t, p) {
+      const n = images.length;
+      const steps = (p.order === "pingpong" && n > 2) ? 2 * n - 2 : n;
+      const step = Math.min(steps - 1, Math.floor(t * steps));
+      const idx = step < n ? step : 2 * n - 2 - step;
+      drawCover(ctx, images[idx], w, h, 1, 0, 0);
+    },
+  },
+  {
+    id: "crossfade", name: "Crossfade", group: "multi",
+    desc: "Images dissolve into each other.",
+    params: multiParams(),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[idx], w, h, 1, 0, 0);
+      if (progress > 0) {
+        ctx.save();
+        ctx.globalAlpha = Easing.easeInOutSine(progress);
+        drawCover(ctx, images[next], w, h, 1, 0, 0);
+        ctx.restore();
+      }
+    },
+  },
+  {
+    id: "slide", name: "Slide", group: "multi",
+    desc: "Images push past each other.",
+    params: multiParams({ direction: S("Direction", DIRS_4, "left") }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      const e = Easing.easeInOutCubic(progress);
+      let cx = 0, cy = 0, nx = 0, ny = 0;
+      if (p.direction === "left") { cx = -e * w; nx = (1 - e) * w; }
+      else if (p.direction === "right") { cx = e * w; nx = -(1 - e) * w; }
+      else if (p.direction === "up") { cy = -e * h; ny = (1 - e) * h; }
+      else { cy = e * h; ny = -(1 - e) * h; }
+      ctx.drawImage(imageLayer("sl_a", images[idx], w, h), cx, cy);
+      if (progress > 0) ctx.drawImage(imageLayer("sl_b", images[next], w, h), nx, ny);
+    },
+  },
+  {
+    id: "zoompush", name: "Zoom Push", group: "multi",
+    desc: "Outgoing image pushes in as the next settles.",
+    params: multiParams({ strength: R("Push Strength", 5, 40, 1, 18, pct) }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      const e = Easing.easeInOutCubic(progress);
+      const s = p.strength / 100;
+      drawCover(ctx, images[next], w, h, 1 + s * (1 - e), 0, 0);
+      if (e < 1) {
+        ctx.save();
+        ctx.globalAlpha = 1 - e;
+        ctx.filter = `blur(${(e * 10).toFixed(1)}px)`;
+        drawCover(ctx, images[idx], w, h, 1 + s * e, 0, 0);
+        ctx.restore();
+        ctx.filter = "none";
+      }
+    },
+  },
+  {
+    id: "wipe", name: "Wipe Reveal", group: "multi",
+    desc: "Hard-edged directional wipe.",
+    params: multiParams({ direction: S("Direction", [["ltr", "Left → Right"], ["rtl", "Right → Left"], ["ttb", "Top → Bottom"], ["btt", "Bottom → Top"]], "ltr") }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[idx], w, h, 1, 0, 0);
+      if (progress > 0) {
+        const e = Easing.easeInOutCubic(progress);
+        ctx.save();
+        ctx.beginPath();
+        if (p.direction === "ltr") ctx.rect(0, 0, w * e, h);
+        else if (p.direction === "rtl") ctx.rect(w * (1 - e), 0, w * e, h);
+        else if (p.direction === "ttb") ctx.rect(0, 0, w, h * e);
+        else ctx.rect(0, h * (1 - e), w, h * e);
+        ctx.clip();
+        drawCover(ctx, images[next], w, h, 1, 0, 0);
+        ctx.restore();
+      }
+    },
+  },
+  {
+    id: "blur", name: "Blur Dissolve", group: "multi",
+    desc: "Cinematic focus-pull between images.",
+    params: multiParams({ maxBlur: R("Max Blur", 4, 40, 1, 16, px) }, 1.6, 0.7),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[idx], w, h, 1, 0, 0);
+      if (progress > 0) {
+        const e = Easing.easeInOutSine(progress);
+        ctx.save();
+        ctx.globalAlpha = e;
+        ctx.filter = `blur(${((1 - e) * p.maxBlur).toFixed(1)}px)`;
+        drawCover(ctx, images[next], w, h, 1, 0, 0);
+        ctx.restore();
+        ctx.filter = "none";
+      }
+    },
+  },
+  {
+    id: "split", name: "Split Reveal", group: "multi",
+    desc: "Frame splits apart to reveal the next.",
+    params: multiParams({ direction: S("Direction", [["horizontal", "Horizontal"], ["vertical", "Vertical"]], "horizontal") }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[next], w, h, 1, 0, 0);
+      if (progress <= 0) { drawCover(ctx, images[idx], w, h, 1, 0, 0); return; }
+      const e = Easing.easeInOutCubic(progress);
+      const cur = imageLayer("sp_a", images[idx], w, h);
+      if (p.direction === "horizontal") {
+        const half = w / 2;
+        ctx.drawImage(cur, 0, 0, half, h, -e * half, 0, half, h);
+        ctx.drawImage(cur, half, 0, half, h, half + e * half, 0, half, h);
+      } else {
+        const half = h / 2;
+        ctx.drawImage(cur, 0, 0, w, half, 0, -e * half, w, half);
+        ctx.drawImage(cur, 0, half, w, half, 0, half + e * half, w, half);
+      }
+    },
+  },
+  {
+    id: "iris", name: "Iris Reveal", group: "multi",
+    desc: "Circular mask opens onto the next image.",
+    params: multiParams({ mode: S("Mode", [["open", "Open (grow)"], ["close", "Close (shrink)"]], "open") }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      const maxR = Math.sqrt(w * w + h * h) / 2;
+      if (p.mode === "open") {
+        drawCover(ctx, images[idx], w, h, 1, 0, 0);
+        if (progress > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(w / 2, h / 2, Easing.easeInOutCubic(progress) * maxR, 0, Math.PI * 2);
+          ctx.clip();
+          drawCover(ctx, images[next], w, h, 1, 0, 0);
+          ctx.restore();
+        }
+      } else {
+        drawCover(ctx, images[next], w, h, 1, 0, 0);
+        if (progress < 1) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(w / 2, h / 2, (1 - Easing.easeInOutCubic(progress)) * maxR, 0, Math.PI * 2);
+          ctx.clip();
+          drawCover(ctx, images[idx], w, h, 1, 0, 0);
+          ctx.restore();
+        }
+      }
+    },
+  },
+  {
+    id: "mosaic", name: "Mosaic Reveal", group: "multi",
+    desc: "Grid tiles flip over in sequence.",
+    params: multiParams({
+      cols: R("Columns", 2, 16, 1, 6, v => Math.round(v)),
+      order: S("Order", [["diagonal", "Diagonal sweep"], ["random", "Scattered"], ["ltr", "Left to right"]], "diagonal"),
+    }, 1.6, 0.8),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[idx], w, h, 1, 0, 0);
+      if (progress <= 0) return;
+      const cols = Math.round(p.cols);
+      const rows = Math.max(1, Math.round(cols * h / w));
+      const tw = w / cols, th = h / rows;
+      const nextLayer = imageLayer("mo_b", images[next], w, h);
+      const total = cols + rows;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          let delay;
+          if (p.order === "diagonal") delay = (c + r) / total;
+          else if (p.order === "ltr") delay = c / cols;
+          else {
+            // Deterministic hash so the scatter is identical every render —
+            // preview and exported frames must agree.
+            const hsh = Math.sin(r * 127.1 + c * 311.7) * 43758.5453;
+            delay = hsh - Math.floor(hsh);
+          }
+          const local = clamp((progress - delay * 0.6) / 0.4, 0, 1);
+          if (local <= 0) continue;
+          const e = Easing.easeOutCubic(local);
+          const x = c * tw, y = r * th;
+          const inset = (1 - e) * tw * 0.5;
+          ctx.save();
+          ctx.globalAlpha = e;
+          ctx.beginPath();
+          ctx.rect(x + inset, y + inset * (th / tw), tw - inset * 2, th - inset * 2 * (th / tw));
+          ctx.clip();
+          ctx.drawImage(nextLayer, 0, 0);
+          ctx.restore();
+        }
+      }
+    },
+  },
+  {
+    id: "blinds", name: "Blinds", group: "multi",
+    desc: "Venetian strips sweep the next image in.",
+    params: multiParams({
+      strips: R("Strips", 3, 24, 1, 9, v => Math.round(v)),
+      orient: S("Orientation", [["vertical", "Vertical"], ["horizontal", "Horizontal"]], "vertical"),
+    }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[idx], w, h, 1, 0, 0);
+      if (progress <= 0) return;
+      const e = Easing.easeInOutCubic(progress);
+      const n = Math.round(p.strips);
+      const nextLayer = imageLayer("bl_b", images[next], w, h);
+      ctx.save();
+      ctx.beginPath();
+      if (p.orient === "vertical") {
+        const sw = w / n;
+        for (let i = 0; i < n; i++) ctx.rect(i * sw, 0, sw * e, h);
+      } else {
+        const sh = h / n;
+        for (let i = 0; i < n; i++) ctx.rect(0, i * sh, w, sh * e);
+      }
+      ctx.clip();
+      ctx.drawImage(nextLayer, 0, 0);
+      ctx.restore();
+    },
+  },
+  {
+    id: "flip", name: "Card Flip", group: "multi",
+    desc: "Faux 3D flip, swapping at the edge.",
+    params: multiParams({
+      axis: S("Axis", [["y", "Vertical axis"], ["x", "Horizontal axis"]], "y"),
+      backdrop: C("Backdrop", "#0d0d0d"),
+    }, 1.6, 0.6),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      if (progress <= 0) { drawCover(ctx, images[idx], w, h, 1, 0, 0); return; }
+      const e = Easing.easeInOutSine(progress);
+      // Compress to an edge at the halfway point, then swap the face.
+      const squash = Math.abs(Math.cos(e * Math.PI));
+      const shown = e < 0.5 ? images[idx] : images[next];
+      const layer = imageLayer("fl", shown, w, h);
+      // The card leaves most of the frame empty while edge-on; without a
+      // filled backdrop that area exports as flat black.
+      ctx.fillStyle = p.backdrop;
+      ctx.fillRect(0, 0, w, h);
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+      if (p.axis === "y") ctx.scale(Math.max(0.001, squash), 1);
+      else ctx.scale(1, Math.max(0.001, squash));
+      ctx.translate(-w / 2, -h / 2);
+      ctx.drawImage(layer, 0, 0);
+      ctx.restore();
+    },
+  },
+  {
+    id: "skew", name: "Skew Slide", group: "multi",
+    desc: "Sheared slide with motion lean.",
+    params: multiParams({
+      direction: S("Direction", DIRS_4, "left"),
+      shear: R("Shear", 4, 40, 1, 16, deg),
+    }),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      const e = Easing.easeInOutCubic(progress);
+      // Lean peaks mid-transition and returns to square at both ends.
+      const lean = Math.sin(e * Math.PI) * Math.tan(p.shear * Math.PI / 180);
+      const horiz = p.direction === "left" || p.direction === "right";
+      const sign = (p.direction === "left" || p.direction === "up") ? -1 : 1;
+      const drawLeaning = (layer, dx, dy) => {
+        ctx.save();
+        if (horiz) ctx.transform(1, 0, lean, 1, dx - lean * h / 2, dy);
+        else ctx.transform(1, lean, 0, 1, dx, dy - lean * w / 2);
+        ctx.drawImage(layer, 0, 0);
+        ctx.restore();
+      };
+      const dCur = horiz ? sign * e * w : 0, dCurY = horiz ? 0 : sign * e * h;
+      const dNext = horiz ? -sign * (1 - e) * w : 0, dNextY = horiz ? 0 : -sign * (1 - e) * h;
+      drawLeaning(imageLayer("sk_a", images[idx], w, h), dCur, dCurY);
+      if (progress > 0) drawLeaning(imageLayer("sk_b", images[next], w, h), dNext, dNextY);
+    },
+  },
+  {
+    id: "flash", name: "Flash Cut", group: "multi",
+    desc: "Hard cut masked by a colour flash.",
+    params: multiParams({ flashColor: C("Flash Colour", "#ffffff") }, 1.8, 0.28),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      drawCover(ctx, images[progress < 0.5 ? idx : next], w, h, 1, 0, 0);
+      if (progress > 0 && progress < 1) {
+        ctx.save();
+        ctx.globalAlpha = Math.sin(progress * Math.PI);
+        ctx.fillStyle = p.flashColor;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+    },
+  },
+  {
+    id: "glitchcut", name: "Glitch Cut", group: "multi",
+    desc: "Torn slices and RGB split across the cut.",
+    params: multiParams({ intensity: R("Intensity", 4, 60, 1, 22, px) }, 1.8, 0.35),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      if (progress <= 0) { drawCover(ctx, images[idx], w, h, 1, 0, 0); return; }
+      if (progress >= 1) { drawCover(ctx, images[next], w, h, 1, 0, 0); return; }
+      const burst = Math.sin(progress * Math.PI);
+      const a = imageLayer("gc_a", images[idx], w, h);
+      const b = imageLayer("gc_b", images[next], w, h);
+      const SLICES = 14;
+      const sh = h / SLICES;
+      for (let i = 0; i < SLICES; i++) {
+        // Deterministic per-slice jitter keyed to the transition step so
+        // preview and export produce identical frames.
+        const step = Math.floor(progress * 12);
+        const hsh = Math.sin(i * 91.7 + step * 47.3) * 43758.5453;
+        const rnd = hsh - Math.floor(hsh);
+        const useNext = rnd < progress;
+        const off = (rnd - 0.5) * 2 * p.intensity * burst;
+        ctx.drawImage(useNext ? b : a, 0, i * sh, w, sh, off, i * sh, w, sh);
+      }
+      if (burst > 0.15) {
+        ctx.save();
+        ctx.globalAlpha = burst * 0.5;
+        drawRgbSplit(ctx, images[progress < 0.5 ? idx : next], w, h, burst * p.intensity * 0.5, 0);
+        ctx.restore();
+      }
+    },
+  },
+  {
+    id: "wave", name: "Wave Dissolve", group: "multi",
+    desc: "Liquid ripple carries one image into the next.",
+    params: multiParams({
+      amp: R("Amplitude", 4, 60, 1, 22, px),
+      freq: R("Frequency", 1, 8, 0.5, 3, v => v.toFixed(1)),
+    }, 1.6, 0.8),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      // Layers carry a margin of `bleed` so a strip displaced by up to
+      // `amp` still has real pixels under it instead of a transparent gap.
+      // Every frame — holds included — goes through this same path so the
+      // slight bleed zoom never changes mid-loop.
+      const bleed = Math.ceil(p.amp) + 2;
+      const a = bleedLayer("wv_a", images[idx], w, h, bleed);
+      if (progress <= 0) { drawWaveDistort(ctx, a, w, h, 0, p.freq, 0, bleed); return; }
+      // Amplitude rises and falls within the transition so both ends are flat.
+      const amp = Math.sin(progress * Math.PI) * p.amp;
+      const phase = progress * Math.PI * 2;
+      const b = bleedLayer("wv_b", images[next], w, h, bleed);
+      drawWaveDistort(ctx, a, w, h, amp, p.freq, phase, bleed);
+      ctx.save();
+      ctx.globalAlpha = Easing.easeInOutSine(progress);
+      const { c: bc, ctx: bctx } = scratch("wv_out", w, h);
+      drawWaveDistort(bctx, b, w, h, -amp, p.freq, phase, bleed);
+      ctx.drawImage(bc, 0, 0);
+      ctx.restore();
+    },
+  },
+  {
+    id: "marquee", name: "Marquee Strip", group: "multi",
+    desc: "Continuous scrolling filmstrip of every image.",
+    params: {
+      perImage: R("Seconds per Image", 0.6, 5, 0.1, 1.8, secs1),
+      gap: R("Gap", 0, 60, 2, 12, px),
+      direction: S("Direction", [["left", "Left"], ["right", "Right"]], "left"),
+      backdrop: C("Gap Colour", "#0d0d0d"),
+    },
+    loop: (p, n) => n * p.perImage,
+    render(ctx, w, h, t, p) {
+      const n = images.length;
+      const slotW = w + p.gap;
+      // The gaps between slides are empty; fill them so they don't export black.
+      ctx.fillStyle = p.backdrop;
+      ctx.fillRect(0, 0, w, h);
+      // Scroll exactly n slots per loop so the strip wraps onto itself.
+      const dir = p.direction === "left" ? -1 : 1;
+      const shift = dir * t * n * slotW;
+      for (let k = -1; k <= n; k++) {
+        const bmp = images[((k % n) + n) % n];
+        let x = k * slotW + shift;
+        // Wrap into the visible band.
+        x = ((x % (n * slotW)) + n * slotW) % (n * slotW);
+        if (x > w) x -= n * slotW;
+        if (x + w < 0 || x > w) continue;
+        ctx.drawImage(imageLayer("mq_" + (((k % n) + n) % n), bmp, w, h), x, 0);
+      }
+    },
+  },
+  {
+    id: "duotonecut", name: "Duotone Cut", group: "multi",
+    desc: "Transitions through a graded duotone frame.",
+    params: multiParams({
+      shadow: C("Shadow Colour", "#12203c"),
+      highlight: C("Highlight Colour", "#f2a65a"),
+    }, 1.6, 0.7),
+    loop: (p, n) => n * (p.hold + p.trans),
+    render(ctx, w, h, t, p) {
+      const { idx, next, progress } = cycleState(t, p.hold, p.trans);
+      if (progress <= 0) { drawCover(ctx, images[idx], w, h, 1, 0, 0); return; }
+      // Graded in the first half, back to full colour on the new image.
+      const grade = Math.sin(progress * Math.PI);
+      const which = progress < 0.5 ? idx : next;
+      drawCover(ctx, images[which], w, h, 1, 0, 0);
+      if (grade > 0.001) {
+        const duo = duotoneLayer("duo_cut", images[which], w, h, p.shadow, p.highlight);
+        ctx.save();
+        ctx.globalAlpha = grade;
+        ctx.drawImage(duo, 0, 0);
+        ctx.restore();
+      }
+      // Quick dissolve underneath the grade so the swap is not a hard cut.
+      if (progress > 0.35 && progress < 0.65) {
+        const mix = (progress - 0.35) / 0.3;
+        ctx.save();
+        ctx.globalAlpha = progress < 0.5 ? mix : 1 - mix;
+        ctx.fillStyle = p.shadow;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+    },
+  },
+];
+
+const PRESET_BY_ID = Object.fromEntries(PRESETS.map(p => [p.id, p]));
+const MULTI_IDS = PRESETS.filter(p => p.group === "multi").map(p => p.id);
+
+/* ================================================================
+ * FILM LOOK — stackable overlays applied on top of any preset.
+ * Research: agencies layer grain / vignette / leaks over the base
+ * transition for cohesion rather than treating them as separate effects.
+ * ================================================================ */
+const LOOK_SCHEMA = {
+  grain: { label: "Film Grain", params: { amount: R("Amount", 2, 30, 1, 8, pct) } },
+  vignette: { label: "Vignette", params: { amount: R("Strength", 5, 80, 1, 35, pct) } },
+  scanlines: { label: "Scanlines", params: { amount: R("Strength", 3, 40, 1, 12, pct), size: R("Line Size", 2, 10, 1, 3, px) } },
+  leak: { label: "Light Leak", params: { amount: R("Strength", 5, 70, 1, 28, pct), color: C("Colour", "#ff9d4d") } },
+  rounded: { label: "Rounded Corners", params: { radius: R("Radius", 2, 60, 1, 14, px), bg: C("Backdrop", "#000000") } },
+};
+const lookState = {};
+for (const [key, def] of Object.entries(LOOK_SCHEMA)) {
+  lookState[key] = { on: false };
+  for (const [pk, pd] of Object.entries(def.params)) lookState[key][pk] = pd.def;
+}
+
+function applyLook(ctx, w, h, t) {
+  if (lookState.leak.on) {
+    const L = lookState.leak;
+    const ang = t * Math.PI * 2;
+    const cx = w * (0.5 + 0.6 * Math.cos(ang));
+    const cy = h * (0.5 + 0.6 * Math.sin(ang));
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.75);
+    g.addColorStop(0, L.color);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = L.amount / 100;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  if (lookState.scanlines.on) {
+    const S2 = lookState.scanlines;
+    const size = Math.max(2, Math.round(S2.size));
+    ctx.save();
+    ctx.globalAlpha = S2.amount / 100;
+    ctx.fillStyle = "#000";
+    for (let y = 0; y < h; y += size * 2) ctx.fillRect(0, y, w, size);
+    ctx.restore();
+  }
+
+  if (lookState.grain.on) {
+    const G = lookState.grain;
+    const tile = noiseTile();
+    // Deterministic per-frame offset: same t always yields the same grain,
+    // so a re-render (or the export pass) reproduces the frame exactly.
+    const seed = Math.floor(t * 99991);
+    const ox = (seed * 37) % 128, oy = (seed * 71) % 128;
+    ctx.save();
+    ctx.globalCompositeOperation = "overlay";
+    ctx.globalAlpha = G.amount / 100;
+    const pat = ctx.createPattern(tile, "repeat");
+    ctx.translate(-ox, -oy);
+    ctx.fillStyle = pat;
+    ctx.fillRect(0, 0, w + 128, h + 128);
+    ctx.restore();
+  }
+
+  if (lookState.vignette.on) {
+    const V = lookState.vignette;
+    const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.72);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, `rgba(0,0,0,${(V.amount / 100).toFixed(3)})`);
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  if (lookState.rounded.on) {
+    const Rd = lookState.rounded;
+    // Punch out the corners, then paint the backdrop behind — leaving them
+    // transparent would come out black in an mp4.
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.beginPath();
+    ctx.roundRect(0, 0, w, h, Math.round(Rd.radius));
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = Rd.bg;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.filter = "none";
+}
+
+/* ================================================================
+ * PRESET STATE + UI GENERATION
+ * ================================================================ */
+const state = {};
+for (const preset of PRESETS) {
+  state[preset.id] = {};
+  for (const [key, def] of Object.entries(preset.params)) state[preset.id][key] = def.def;
+}
+let activePreset = "kenburns";
+
+const frame = { aspect: "original", width: 1280, fps: 30 };
+
+function buildPresetCards() {
+  const single = document.getElementById("presetGridSingle");
+  const multi = document.getElementById("presetGridMulti");
+  single.innerHTML = ""; multi.innerHTML = "";
+  for (const preset of PRESETS) {
+    const card = document.createElement("div");
+    card.className = "preset-card" + (preset.id === activePreset ? " active" : "");
+    card.dataset.preset = preset.id;
+    card.innerHTML = `<h3>${preset.name}</h3><p>${preset.desc}</p>`;
+    card.addEventListener("click", () => {
+      if (card.classList.contains("disabled")) return;
+      selectPreset(preset.id);
+    });
+    (preset.group === "single" ? single : multi).appendChild(card);
+  }
+}
+
+function fieldFor(scopeId, obj, key, def, onChange) {
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  const label = document.createElement("label");
+  const valSpan = document.createElement("span");
+  valSpan.className = "val";
+  label.textContent = def.label;
+  if (def.type === "range") label.appendChild(valSpan);
+  wrap.appendChild(label);
+
+  let input;
+  if (def.type === "range") {
+    input = document.createElement("input");
+    input.type = "range";
+    input.min = def.min; input.max = def.max; input.step = def.step;
+    input.value = obj[key];
+    valSpan.textContent = def.fmt(obj[key]);
+    input.addEventListener("input", () => {
+      obj[key] = parseFloat(input.value);
+      valSpan.textContent = def.fmt(obj[key]);
+      onChange();
+    });
+  } else if (def.type === "select") {
+    input = document.createElement("select");
+    for (const [v, lbl] of def.options) {
+      const o = document.createElement("option");
+      o.value = v; o.textContent = lbl;
+      input.appendChild(o);
+    }
+    input.value = obj[key];
+    input.addEventListener("change", () => { obj[key] = input.value; onChange(); });
+  } else {
+    input = document.createElement("input");
+    input.type = "color";
+    input.value = obj[key];
+    input.addEventListener("input", () => { obj[key] = input.value; onChange(); });
+  }
+  input.id = scopeId + "_" + key;
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function buildParamGroups() {
+  const host = document.getElementById("paramsHost");
+  host.innerHTML = "";
+  for (const preset of PRESETS) {
+    const group = document.createElement("div");
+    group.className = "params-group" + (preset.id === activePreset ? " active" : "");
+    group.id = "params-" + preset.id;
+    for (const [key, def] of Object.entries(preset.params)) {
+      group.appendChild(fieldFor(preset.id, state[preset.id], key, def, () => { updateReadouts(); driveTick(); }));
+    }
+    const readout = document.createElement("div");
+    readout.className = "readout";
+    readout.id = "readout-" + preset.id;
+    group.appendChild(readout);
+    host.appendChild(group);
+  }
+}
+
+function buildLookControls() {
+  const host = document.getElementById("lookBody");
+  host.innerHTML = "";
+  for (const [key, def] of Object.entries(LOOK_SCHEMA)) {
+    const row = document.createElement("div");
+    row.className = "check-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = "look_" + key;
+    cb.checked = lookState[key].on;
+    const lbl = document.createElement("label");
+    lbl.htmlFor = cb.id;
+    lbl.textContent = def.label;
+    lbl.style.cursor = "pointer";
+    row.appendChild(cb); row.appendChild(lbl);
+    host.appendChild(row);
+
+    const sub = document.createElement("div");
+    sub.style.display = lookState[key].on ? "flex" : "none";
+    sub.style.flexDirection = "column";
+    sub.style.gap = "10px";
+    sub.style.paddingLeft = "22px";
+    for (const [pk, pd] of Object.entries(def.params)) {
+      sub.appendChild(fieldFor("look_" + key, lookState[key], pk, pd, () => driveTick()));
+    }
+    host.appendChild(sub);
+
+    cb.addEventListener("change", () => {
+      lookState[key].on = cb.checked;
+      sub.style.display = cb.checked ? "flex" : "none";
+      updateLookCount();
+      driveTick();
+    });
+  }
+  updateLookCount();
+}
+
+function updateLookCount() {
+  const n = Object.values(lookState).filter(v => v.on).length;
+  document.getElementById("lookActiveCount").textContent = n ? `· ${n} on` : "";
+}
+
+document.getElementById("lookToggleHead").addEventListener("click", () => {
+  const body = document.getElementById("lookBody");
+  const chev = document.getElementById("lookChevron");
+  body.classList.toggle("open");
+  chev.classList.toggle("open");
+});
+
+function selectPreset(id) {
+  activePreset = id;
+  document.querySelectorAll(".preset-card").forEach(c => c.classList.toggle("active", c.dataset.preset === id));
+  document.querySelectorAll(".params-group").forEach(g => g.classList.toggle("active", g.id === "params-" + id));
+  updateReadouts();
+  driveTick();
+}
+
+function updatePresetAvailability() {
+  const multiOk = images.length >= 2;
+  document.querySelectorAll(".preset-card").forEach(card => {
+    if (MULTI_IDS.includes(card.dataset.preset)) card.classList.toggle("disabled", !multiOk);
+  });
+  document.getElementById("multiNote").textContent = multiOk
+    ? "transitions between images"
+    : "transitions between images — add a 2nd image to unlock";
+  if (!multiOk && MULTI_IDS.includes(activePreset)) selectPreset("kenburns");
+}
+
+function updateReadouts() {
+  const n = Math.max(1, images.length);
+  for (const preset of PRESETS) {
+    const el = document.getElementById("readout-" + preset.id);
+    if (!el) continue;
+    const secs = preset.loop(state[preset.id], n);
+    el.textContent = `Loop: ${secs.toFixed(1)}s` + (preset.group === "multi" ? ` · ${images.length} images` : "");
+  }
+}
+
+function getLoopDuration() {
+  const preset = PRESET_BY_ID[activePreset];
+  // Floor only guards against a zero/absurd divisor in the preview clock.
+  // It must stay well below a fast flipbook's loop (3 frames at 24fps is
+  // 0.125s) or the requested speed would be silently slowed down.
+  return Math.max(0.05, preset.loop(state[activePreset], Math.max(1, images.length)));
+}
+
+/* ── Frame settings ───────────────────────────────────────── */
+document.getElementById("aspectRatio").addEventListener("change", e => { frame.aspect = e.target.value; driveTick(); });
+document.getElementById("fpsSelect").addEventListener("change", e => { frame.fps = e.target.value; });
+const exportWidthEl = document.getElementById("exportWidth");
+exportWidthEl.addEventListener("input", () => {
+  frame.width = parseFloat(exportWidthEl.value);
+  document.getElementById("exportWidthVal").textContent = Math.round(frame.width) + "px";
+  driveTick();
+});
+
+function getCanvasSize() {
+  let w, h;
+  if (frame.aspect === "original" && images[0]) {
+    w = images[0].width; h = images[0].height;
+  } else {
+    const ratios = { "1:1": [1, 1], "4:5": [4, 5], "3:2": [3, 2], "4:3": [4, 3], "16:9": [16, 9] };
+    const r = ratios[frame.aspect] || [1, 1];
+    w = r[0]; h = r[1];
+  }
+  // H.264/VP9 reject odd dimensions — round both to even.
+  let ew = Math.max(2, Math.round(frame.width / 2) * 2);
+  let eh = Math.max(2, Math.round(ew * (h / w) / 2) * 2);
+  return { w: ew, h: eh };
+}
+
+// The preview is capped well below export size: the heavier presets
+// (wave, mosaic, glitch) do hundreds of draw calls per frame and would
+// stutter at full export resolution for no visual benefit on screen.
+const PREVIEW_MAX = 620;
+function getPreviewSize() {
+  const { w, h } = getCanvasSize();
+  const s = Math.min(1, PREVIEW_MAX / Math.max(w, h));
+  return { w: Math.max(2, Math.round(w * s / 2) * 2), h: Math.max(2, Math.round(h * s / 2) * 2) };
+}
+
+/* ================================================================
+ * FRAME RENDER
+ * ================================================================ */
+function renderFrame(ctx, w, h, t) {
+  resetCtxState(ctx, w, h);
+  if (!images.length) return;
+  const preset = PRESET_BY_ID[activePreset];
+  const p = state[activePreset];
+  // Multi-image presets fall back to the first image if the user removed
+  // images after selecting one, rather than throwing mid-render.
+  if (preset.group === "multi" && images.length < 2) {
+    drawCover(ctx, images[0], w, h, 1, 0, 0);
+  } else {
+    preset.render(ctx, w, h, t, p);
+  }
+  resetCtxState_keep(ctx);
+  applyLook(ctx, w, h, t);
+}
+// Reset transform/alpha/filter without clearing what was drawn.
+function resetCtxState_keep(ctx) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.filter = "none";
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ================================================================
+ * LIVE PREVIEW — rAF for smoothness, with a setInterval fallback so the
+ * preview can never fully stall if rAF is throttled or suspended.
+ * ================================================================ */
+let previewStart = performance.now();
+function driveTick() {
+  if (!images.length) return;
+  const size = getPreviewSize();
+  if (previewCanvas.width !== size.w || previewCanvas.height !== size.h) {
+    previewCanvas.width = size.w;
+    previewCanvas.height = size.h;
+  }
+  const duration = getLoopDuration();
+  let t = ((performance.now() - previewStart) / 1000 / duration) % 1;
+  if (t < 0) t += 1;
+  renderFrame(previewCanvas.getContext("2d"), size.w, size.h, t);
+}
+function previewTick() {
+  driveTick();
+  requestAnimationFrame(previewTick);
+}
+requestAnimationFrame(previewTick);
+setInterval(driveTick, 100);
+
+/* ── Surprise me ──────────────────────────────────────────── */
+document.getElementById("randomizeBtn").addEventListener("click", () => {
+  const pool = PRESETS.filter(p => p.group === "single" || images.length >= 2);
+  const preset = pool[Math.floor(Math.random() * pool.length)];
+  for (const [key, def] of Object.entries(preset.params)) {
+    if (def.type === "range") {
+      const steps = Math.floor((def.max - def.min) / def.step);
+      state[preset.id][key] = +(def.min + Math.floor(Math.random() * (steps + 1)) * def.step).toFixed(4);
+    } else if (def.type === "select") {
+      state[preset.id][key] = def.options[Math.floor(Math.random() * def.options.length)][0];
+    }
+  }
+  buildParamGroups();
+  selectPreset(preset.id);
+  showToast(preset.name);
+});
+
+/* ================================================================
+ * EXPORT
+ * ================================================================ */
+function downloadBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+let ffmpegInstance = null;
+let ffmpegLoadingPromise = null;
+async function getFFmpeg(onLog) {
+  if (ffmpegInstance) return ffmpegInstance;
+  if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
+  if (!window.__ffmpegModule) {
+    throw new Error("");
+  }
+  ffmpegLoadingPromise = (async () => {
+    const { FFmpeg } = window.__ffmpegModule;
+    const inst = new FFmpeg();
+    if (onLog) inst.on("log", onLog);
+    await inst.load({
+      coreURL: new URL("../vendor/core/ffmpeg-core.js", document.baseURI).href,
+      wasmURL: new URL("../vendor/core/ffmpeg-core.wasm", document.baseURI).href,
+    });
+    ffmpegInstance = inst;
+    return inst;
+  })();
+  return ffmpegLoadingPromise;
+}
+
+const progressBar = document.getElementById("progressBar");
+const progressFill = document.getElementById("progressFill");
+
+async function renderFrameSequence(ffmpeg, w, h, ext) {
+  const fps = parseInt(frame.fps, 10);
+  const duration = getLoopDuration();
+  const frameCount = Math.max(1, Math.round(duration * fps));
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  const mime = ext === "png" ? "image/png" : "image/jpeg";
+
+  progressBar.style.display = "";
+  for (let i = 0; i < frameCount; i++) {
+    renderFrame(ctx, w, h, i / frameCount);
+    const blob = await new Promise(res => c.toBlob(res, mime, 0.94));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    await ffmpeg.writeFile("f" + String(i).padStart(5, "0") + "." + ext, bytes);
+    progressFill.style.width = Math.round(((i + 1) / frameCount) * 40) + "%";
+  }
+  return { frameCount, fps };
+}
+
+async function cleanupFrames(ffmpeg, frameCount, ext) {
+  for (let i = 0; i < frameCount; i++) {
+    try { await ffmpeg.deleteFile("f" + String(i).padStart(5, "0") + "." + ext); } catch {}
+  }
+}
+
+async function exportVideo(format) {
+  if (!images.length) return;
+  const size = getCanvasSize();
+  renderingNote.textContent = "Rendering frames…";
+  progressFill.style.width = "0%";
+  try {
+    const ffmpeg = await getFFmpeg();
+    const ext = format === "gif" ? "png" : "jpg";
+    const pattern = "f%05d." + ext;
+    const { frameCount, fps } = await renderFrameSequence(ffmpeg, size.w, size.h, ext);
+
+    renderingNote.textContent = "Encoding…";
+    let outputName, args;
+    if (format === "mp4") {
+      outputName = "output.mp4";
+      args = ["-framerate", String(fps), "-i", pattern, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", "-preset", "medium", "-movflags", "+faststart", outputName];
+    } else if (format === "webm") {
+      outputName = "output.webm";
+      args = ["-framerate", String(fps), "-i", pattern, "-c:v", "libvpx-vp9", "-crf", "24", "-b:v", "0", "-row-mt", "1", outputName];
+    } else {
+      const palette = "palette.png";
+      await ffmpeg.exec(["-framerate", String(fps), "-i", pattern, "-vf", "fps=" + fps + ",scale=" + size.w + ":-1:flags=lanczos,palettegen=stats_mode=diff", palette]);
+      outputName = "output.gif";
+      args = ["-framerate", String(fps), "-i", pattern, "-i", palette, "-lavfi", "fps=" + fps + ",scale=" + size.w + ":-1:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a:diff_mode=rectangle", outputName];
+    }
+    await ffmpeg.exec(args);
+    progressFill.style.width = "90%";
+
+    const data = await ffmpeg.readFile(outputName);
+    const mime = format === "mp4" ? "video/mp4" : format === "webm" ? "video/webm" : "image/gif";
+    const blob = new Blob([data.buffer], { type: mime });
+
+    await cleanupFrames(ffmpeg, frameCount, ext);
+    try { await ffmpeg.deleteFile(outputName); if (format === "gif") await ffmpeg.deleteFile("palette.png"); } catch {}
+
+    progressFill.style.width = "100%";
+    downloadBlob(blob, `animation.${format}`);
+    renderingNote.textContent = "Done.";
+    showToast("Downloaded");
+  } catch (err) {
+    console.error(err);
+    renderingNote.textContent = "Export failed: " + err.message;
+    showToast("Export failed");
+  } finally {
+    setTimeout(() => { progressBar.style.display = "none"; progressFill.style.width = "0%"; }, 1000);
+  }
+}
+
+document.getElementById("exportMp4Btn").addEventListener("click", () => exportVideo("mp4"));
+document.getElementById("exportWebmBtn").addEventListener("click", () => exportVideo("webm"));
+document.getElementById("exportGifBtn").addEventListener("click", () => exportVideo("gif"));
+
+/* ── Boot ─────────────────────────────────────────────────── */
+buildPresetCards();
+buildParamGroups();
+buildLookControls();
+updateReadouts();
+</script>
+
+</body>
+</html>
