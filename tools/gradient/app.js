@@ -8,8 +8,7 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 /* ================================================================ chrome */
 const NAV = [["/", "Studio"], ["/tools/layout/index.html", "Layout"],
   ["/tools/converter/index.html", "Converter"],
-  ["/tools/animator/index.html", "Animator"], ["/tools/pixel/index.html", "Pixel"],
-  ["/tools/logo/index.html", "Logo"], ["/tools/gradient/index.html", "Gradient"],
+  ["/tools/animator/index.html", "Animator"], ["/tools/pixel/index.html", "Pixel"], ["/tools/gradient/index.html", "Gradient"],
   ["/tools/paths/index.html", "Paths"]];
 $("#nav").innerHTML = NAV.map(([h, l]) =>
   '<a href="' + h + '"' + (l === "Gradient" ? ' class="active"' : "") + ">" + l + "</a>")
