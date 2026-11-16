@@ -867,7 +867,7 @@ $("rangeBtn").addEventListener("click", () => { $("exStart").value = 0; $("exEnd
 async function getFFmpeg() {
   if (ffmpegInstance) return ffmpegInstance;
   if (ffmpegLoading) return ffmpegLoading;
-  if (!window.__ffmpegModule) throw new Error("Export engine unavailable — open this through the Studio server, not as a file.");
+  if (!window.__ffmpegModule) throw new Error("Export engine unavailable — reload the page, and try Chrome if it persists.");
   ffmpegLoading = (async () => {
     const inst = new window.__ffmpegModule.FFmpeg();
     await inst.load({

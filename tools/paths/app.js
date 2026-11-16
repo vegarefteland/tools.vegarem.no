@@ -8,7 +8,7 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 /* ================================================================ chrome */
-const NAV = [["/", "Studio"], ["/tools/layout/index.html", "Layout"],
+const NAV = [["/", "Tools"], ["/tools/layout/index.html", "Layout"],
   ["/tools/converter/index.html", "Converter"],
   ["/tools/animator/index.html", "Animator"], ["/tools/pixel/index.html", "Pixel"], ["/tools/gradient/index.html", "Gradient"],
   ["/tools/paths/index.html", "Paths"]];

@@ -6,7 +6,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
 /* ================================================================ chrome */
-const NAV = [["/", "Studio"], ["/tools/layout/index.html", "Layout"],
+const NAV = [["/", "Tools"], ["/tools/layout/index.html", "Layout"],
   ["/tools/converter/index.html", "Converter"],
   ["/tools/animator/index.html", "Animator"], ["/tools/pixel/index.html", "Pixel"], ["/tools/gradient/index.html", "Gradient"],
   ["/tools/paths/index.html", "Paths"]];
