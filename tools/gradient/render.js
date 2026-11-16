@@ -15,118 +15,113 @@ const TYPE_LABELS = {
 };
 
 function ramps(cfg) {
-  return makeRamp(cfg.stops, cfg.space, cfg.easing, cfg.bias);
+  return makeRamp(cfg.stops, cfg.space, cfg.easing, cfg.bias, { hue: cfg.hue, spline: cfg.spline });
 }
 
-/* --------------------------------------------------------------- shapes */
+/* ----------------------------------------------------------------- samplers
+ * Every type is a sampler: (x, y, out) writes a float RGB for that pixel.
+ * renderGradient runs it over the frame and only then rounds to 8 bits,
+ * with dither added just before the rounding. That order is the whole point:
+ * the browser's own gradients are already 8-bit when they reach the canvas,
+ * and noise added after that cannot bring back the levels that were lost. */
 
-function drawLinear(ctx, w, h, cfg, ramp) {
+function lutAt(L, t, o) {
+  t = (t < 0 ? 0 : t > 1 ? 1 : t) * L.n;
+  const i = t | 0, f = t - i, a = i * 3, b = Math.min(L.n, i + 1) * 3, l = L.lut;
+  o[0] = l[a] + (l[b] - l[a]) * f;
+  o[1] = l[a + 1] + (l[b + 1] - l[a + 1]) * f;
+  o[2] = l[a + 2] + (l[b + 2] - l[a + 2]) * f;
+}
+
+function sampleLinear(w, h, cfg, L) {
   const a = (cfg.angle || 0) * Math.PI / 180;
   // span the full diagonal so the ramp never clips at a corner
-  const cx = w / 2, cy = h / 2;
-  const len = Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a));
-  const g = ctx.createLinearGradient(
-    cx - Math.cos(a) * len / 2, cy - Math.sin(a) * len / 2,
-    cx + Math.cos(a) * len / 2, cy + Math.sin(a) * len / 2);
-  applyStops(g, ramp, 64);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
+  const len = Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a)) || 1;
+  const ca = Math.cos(a) / len, sa = Math.sin(a) / len, cx = w / 2, cy = h / 2;
+  return (x, y, o) => lutAt(L, (x - cx) * ca + (y - cy) * sa + 0.5, o);
 }
 
-function drawRadial(ctx, w, h, cfg, ramp) {
+function sampleRadial(w, h, cfg, L) {
   const cx = w * cfg.cx, cy = h * cfg.cy;
-  const r = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)) * cfg.radius;
-  ctx.save();
-  if (cfg.squash !== 1) {
-    ctx.translate(cx, cy);
-    ctx.scale(1, Math.max(0.05, cfg.squash));
-    ctx.translate(-cx, -cy);
-  }
-  const g = ctx.createRadialGradient(cx, cy, r * cfg.inner, cx, cy, Math.max(1, r));
-  applyStops(g, ramp, 64);
-  ctx.fillStyle = g;
-  ctx.fillRect(-w, -h, w * 3, h * 3);
-  ctx.restore();
+  const r = Math.max(1, Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy)) * cfg.radius);
+  const r0 = r * cfg.inner, sq = Math.max(0.05, cfg.squash);
+  return (x, y, o) => lutAt(L, (Math.hypot(x - cx, (y - cy) / sq) - r0) / Math.max(1e-6, r - r0), o);
 }
 
-function drawConic(ctx, w, h, cfg, ramp) {
-  const cx = w * cfg.cx, cy = h * cfg.cy;
-  if (!ctx.createConicGradient) return drawRadial(ctx, w, h, cfg, ramp);
-  const g = ctx.createConicGradient((cfg.angle || 0) * Math.PI / 180, cx, cy);
-  // mirror so the seam where 1 meets 0 is not a hard line
-  const n = 96;
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const u = cfg.mirror ? 1 - Math.abs(t * 2 - 1) : t;
-    g.addColorStop(t, rgbToHex(ramp(u)));
-  }
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
+function sampleConic(w, h, cfg, L) {
+  const cx = w * cfg.cx, cy = h * cfg.cy, a0 = (cfg.angle || 0) * Math.PI / 180;
+  return (x, y, o) => {
+    let t = (Math.atan2(y - cy, x - cx) - a0) / TAU;
+    t -= Math.floor(t);
+    // mirror so the seam where 1 meets 0 is not a hard line
+    lutAt(L, cfg.mirror ? 1 - Math.abs(t * 2 - 1) : t, o);
+  };
 }
 
 // Sky over water: a ramp to the horizon, then the same ramp mirrored and
 // compressed below it, the way a flat sea returns the sky.
-function drawHorizon(ctx, w, h, cfg, ramp) {
-  const y = Math.round(h * cfg.horizon);
-  const sky = ctx.createLinearGradient(0, 0, 0, y);
-  applyStops(sky, ramp, 64);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, y);
-
-  const depth = h - y;
-  if (depth > 0) {
-    const sea = ctx.createLinearGradient(0, y, 0, h);
-    const n = 64;
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      // reflection runs back up the ramp, then dives past its dark end
-      const u = 1 - Math.pow(t, 1 / Math.max(0.15, cfg.reflect));
-      const c = ramp(u);
-      const k = 1 - t * cfg.deepen;
-      sea.addColorStop(t, rgbToHex([c[0] * k, c[1] * k, c[2] * k]));
+function sampleHorizon(w, h, cfg, L) {
+  const yH = Math.round(h * cfg.horizon), depth = Math.max(1, h - yH);
+  const k = 1 / Math.max(0.15, cfg.reflect), top = [0, 0, 0];
+  lutAt(L, 1, top);
+  return (x, y, o) => {
+    if (y < yH) lutAt(L, y / Math.max(1, yH), o);
+    else {
+      const t = (y - yH) / depth;
+      lutAt(L, 1 - Math.pow(t, k), o);
+      const d = 1 - t * cfg.deepen;
+      o[0] *= d; o[1] *= d; o[2] *= d;
     }
-    ctx.fillStyle = sea;
-    ctx.fillRect(0, y, w, depth);
-  }
-  if (cfg.line > 0) {
-    ctx.save();
-    ctx.globalAlpha = cfg.line;
-    ctx.fillStyle = rgbToHex(ramp(1));
-    ctx.fillRect(0, y - 1, w, 2);
-    ctx.restore();
-  }
+    if (cfg.line > 0 && y >= yH - 1 && y < yH + 1) {
+      const g = cfg.line;
+      o[0] += (top[0] - o[0]) * g; o[1] += (top[1] - o[1]) * g; o[2] += (top[2] - o[2]) * g;
+    }
+  };
 }
 
 // Hard stripes with a soft falloff inside each, the poster look.
-function drawBands(ctx, w, h, cfg, ramp) {
+function sampleBands(w, h, cfg, L) {
   const n = Math.max(2, Math.round(cfg.bands));
-  const a = (cfg.angle || 0) * Math.PI / 180;
-  const diag = Math.hypot(w, h);
-  ctx.save();
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate(a);
-  ctx.translate(-diag / 2, -diag / 2);
-  const step = diag / n;
-  for (let i = 0; i < n; i++) {
-    const t0 = i / n, t1 = (i + 1) / n;
-    const g = ctx.createLinearGradient(0, i * step, 0, (i + 1) * step);
-    const soft = clamp01(cfg.soft);
-    const inner = 0.5 - soft / 2, outer = 0.5 + soft / 2;
-    const cA = ramp(cfg.alternate && i % 2 ? t1 : t0);
-    const cB = ramp(cfg.alternate && i % 2 ? t0 : t1);
-    g.addColorStop(0, rgbToHex(cA));
-    g.addColorStop(clamp01(inner), rgbToHex(cA));
-    g.addColorStop(clamp01(outer), rgbToHex(cB));
-    g.addColorStop(1, rgbToHex(cB));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, i * step, diag, step + 1);
-  }
-  ctx.restore();
+  const a = (cfg.angle || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  const diag = Math.hypot(w, h), step = diag / n, soft = clamp01(cfg.soft);
+  const inner = 0.5 - soft / 2, outer = 0.5 + soft / 2;
+  const cols = [];
+  for (let i = 0; i <= n; i++) { const c = [0, 0, 0]; lutAt(L, i / n, c); cols.push(c); }
+  return (x, y, o) => {
+    // into the rotated band frame (inverse of rotate(a) about the centre)
+    const dx = x - w / 2, dy = y - h / 2;
+    const by = -sa * dx + ca * dy + diag / 2;
+    let i = Math.floor(by / step); if (i < 0) i = 0; else if (i > n - 1) i = n - 1;
+    const f = by / step - i;
+    const flip = cfg.alternate && i % 2;
+    const A = cols[flip ? i + 1 : i], B = cols[flip ? i : i + 1];
+    const u = f <= inner ? 0 : f >= outer ? 1 : (f - inner) / Math.max(1e-6, outer - inner);
+    o[0] = A[0] + (B[0] - A[0]) * u; o[1] = A[1] + (B[1] - A[1]) * u; o[2] = A[2] + (B[2] - A[2]) * u;
+  };
 }
 
-// Mesh: colour points pulling on every pixel, weighted by distance. Computed
-// small and scaled up, it is all low frequency, and a full-size per-pixel pass
-// would cost a second per frame for no visible gain.
+// Low-frequency types (mesh, fluid) are computed small and read back with
+// bilinear filtering in float, so scaling up adds no 8-bit steps of its own.
+function bufferSampler(buf, bw, bh, w, h) {
+  return (x, y, o) => {
+    let fx = x / w * bw - 0.5, fy = y / h * bh - 0.5;
+    if (fx < 0) fx = 0; else if (fx > bw - 1) fx = bw - 1;
+    if (fy < 0) fy = 0; else if (fy > bh - 1) fy = bh - 1;
+    const x0 = fx | 0, y0 = fy | 0, x1 = Math.min(bw - 1, x0 + 1), y1 = Math.min(bh - 1, y0 + 1);
+    const u = fx - x0, v = fy - y0;
+    const i00 = (y0 * bw + x0) * 3, i10 = (y0 * bw + x1) * 3, i01 = (y1 * bw + x0) * 3, i11 = (y1 * bw + x1) * 3;
+    for (let c = 0; c < 3; c++) {
+      const top = buf[i00 + c] + (buf[i10 + c] - buf[i00 + c]) * u;
+      const bot = buf[i01 + c] + (buf[i11 + c] - buf[i01 + c]) * u;
+      o[c] = top + (bot - top) * v;
+    }
+  };
+}
+
+// Mesh: colour points pulling on every pixel. "Soft" weights each point with a
+// Gaussian and normalises the sum, a smooth field with no bull's-eye around a
+// point. "Points" is the original inverse-distance weighting, sharper and
+// knottier, kept for that look.
 function meshPoints(cfg) {
   const r = rng(cfg.seed + "|mesh");
   const cols = cfg.stops.map(s => s.hex);
@@ -139,71 +134,84 @@ function meshPoints(cfg) {
       lab: rgbToOklab(hexToRgb(cols[i % cols.length])),
     });
   }
+  // points dragged on the preview override the seeded positions
+  if (Array.isArray(cfg.meshPos) && cfg.meshPos.length === n)
+    pts.forEach((p, i) => { p.x = cfg.meshPos[i][0]; p.y = cfg.meshPos[i][1]; });
   return pts;
 }
 
-function drawMesh(ctx, w, h, cfg, ramp) {
+function sampleMesh(w, h, cfg) {
   const pts = meshPoints(cfg);
-  const scale = Math.min(1, 260 / Math.max(w, h));
+  const scale = Math.min(1, 360 / Math.max(w, h));
   const bw = Math.max(8, Math.round(w * scale)), bh = Math.max(8, Math.round(h * scale));
-  const buf = document.createElement("canvas");
-  buf.width = bw; buf.height = bh;
-  const bx = buf.getContext("2d");
-  const img = bx.createImageData(bw, bh), d = img.data;
+  const buf = new Float32Array(bw * bh * 3);
+  const soft = cfg.meshStyle !== "points";
   const p = 1 + cfg.falloff * 4;
+  const sig = lerp(0.75, 0.22, clamp01(cfg.falloff));
+  const e = new Float64Array(pts.length);
   for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
-    const u = x / bw, v = y / bh;
+    const u = (x + 0.5) / bw, v = (y + 0.5) / bh;
     let wl = 0, wa = 0, wb = 0, ws = 0;
-    for (const pt of pts) {
-      const dx = (u - pt.x), dy = (v - pt.y);
-      const dist = Math.pow(Math.max(1e-4, (dx * dx + dy * dy) / (pt.r * pt.r)), p / 2);
-      const weight = 1 / dist;
-      wl += pt.lab[0] * weight; wa += pt.lab[1] * weight; wb += pt.lab[2] * weight; ws += weight;
+    if (soft) {
+      let emax = -Infinity;
+      for (let k = 0; k < pts.length; k++) {
+        const pt = pts[k], dx = u - pt.x, dy = v - pt.y, s2 = (pt.r * sig) * (pt.r * sig);
+        e[k] = -(dx * dx + dy * dy) / (2 * s2);
+        if (e[k] > emax) emax = e[k];
+      }
+      for (let k = 0; k < pts.length; k++) {
+        const wt = Math.exp(e[k] - emax), lab = pts[k].lab;
+        wl += lab[0] * wt; wa += lab[1] * wt; wb += lab[2] * wt; ws += wt;
+      }
+    } else {
+      for (const pt of pts) {
+        const dx = u - pt.x, dy = v - pt.y;
+        const wt = 1 / Math.pow(Math.max(1e-4, (dx * dx + dy * dy) / (pt.r * pt.r)), p / 2);
+        wl += pt.lab[0] * wt; wa += pt.lab[1] * wt; wb += pt.lab[2] * wt; ws += wt;
+      }
     }
-    const rgb = oklabToRgb([wl / ws, wa / ws, wb / ws]);
-    const i = (y * bw + x) * 4;
-    d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = 255;
+    const rgb = oklabToRgbMapped([wl / ws, wa / ws, wb / ws]);
+    const i = (y * bw + x) * 3;
+    buf[i] = rgb[0]; buf[i + 1] = rgb[1]; buf[i + 2] = rgb[2];
   }
-  bx.putImageData(img, 0, 0);
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(buf, 0, 0, w, h);
-  ctx.restore();
+  return bufferSampler(buf, bw, bh, w, h);
 }
 
 // Fluid: the ramp read through warped noise, the marbled, poured look.
-function drawFluid(ctx, w, h, cfg, ramp) {
-  const scale = Math.min(1, 420 / Math.max(w, h));
+function sampleFluid(w, h, cfg, L) {
+  const scale = Math.min(1, 480 / Math.max(w, h));
   const bw = Math.max(8, Math.round(w * scale)), bh = Math.max(8, Math.round(h * scale));
-  const buf = document.createElement("canvas");
-  buf.width = bw; buf.height = bh;
-  const bx = buf.getContext("2d");
-  const img = bx.createImageData(bw, bh), d = img.data;
+  const buf = new Float32Array(bw * bh * 3);
   const seed = hashSeed(cfg.seed + "|fluid") & 0xffff;
-  const S = cfg.scale, warp = cfg.warp, oct = Math.round(cfg.detail);
-  const lut = [];
-  for (let i = 0; i <= 256; i++) lut.push(ramp(i / 256));
+  const S = cfg.scale, warp = cfg.warp, oct = Math.round(cfg.detail), o = [0, 0, 0];
   for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
     const u = (x / bw) * S, v = (y / bh) * S;
     const qx = fbm(u + 1.7, v + 9.2, seed, 3);
     const qy = fbm(u + 8.3, v + 2.8, seed + 97, 3);
     let n = fbm(u + warp * qx * 4, v + warp * qy * 4, seed + 311, oct);
     n = clamp01((n - 0.5) * (1 + cfg.contrast * 3) + 0.5);
-    const c = lut[Math.round(n * 256)];
-    const i = (y * bw + x) * 4;
-    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+    lutAt(L, n, o);
+    const i = (y * bw + x) * 3;
+    buf[i] = o[0]; buf[i + 1] = o[1]; buf[i + 2] = o[2];
   }
-  bx.putImageData(img, 0, 0);
-  ctx.save();
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(buf, 0, 0, w, h);
-  ctx.restore();
+  return bufferSampler(buf, bw, bh, w, h);
 }
 
-const RENDERERS = { linear: drawLinear, radial: drawRadial, conic: drawConic,
-  horizon: drawHorizon, bands: drawBands, mesh: drawMesh, fluid: drawFluid };
+const SAMPLERS = { linear: sampleLinear, radial: sampleRadial, conic: sampleConic,
+  horizon: sampleHorizon, bands: sampleBands, mesh: sampleMesh, fluid: sampleFluid };
+
+/* ----------------------------------------------------------------- dither
+ * Triangular-PDF noise, two uniform values summed, spanning ±1 step at
+ * strength 1. Uniform noise of the same size leaves faint bands where it
+ * happens to cancel; triangular does not, and it is the lowest-power dither
+ * that fully decorrelates the rounding error (Gjøl, "Banding in Games";
+ * Wronski, "Dithering part three"). One value per pixel for all three
+ * channels, so it reads as fine luminance grain rather than coloured fizz. */
+const TPDF = (() => {
+  const n = 256, t = new Float32Array(n * n);
+  for (let i = 0; i < n * n; i++) t[i] = hash2(i, 3, 9173) + hash2(i, 5, 4129) - 1;
+  return t;
+})();
 
 /* ------------------------------------------------------- finishing passes */
 
@@ -228,36 +236,6 @@ function postPosterize(ctx, w, h, levels) {
     d[i] = Math.round(d[i] / 255 * q) / q * 255;
     d[i + 1] = Math.round(d[i + 1] / 255 * q) / q * 255;
     d[i + 2] = Math.round(d[i + 2] / 255 * q) / q * 255;
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-// Ordered dither at ±1 step. A smooth ramp across 2000 px crosses far fewer
-// than 2000 distinct 8-bit values, and the eye picks out the steps as bands;
-// a sub-step of noise hides them without looking like grain.
-const BAYER8 = (() => {
-  let m = [[0]];
-  while (m.length < 8) {
-    const s = m.length, n = [];
-    for (let y = 0; y < s * 2; y++) n.push(new Array(s * 2));
-    for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-      const v = 4 * m[y][x];
-      n[y][x] = v; n[y][x + s] = v + 2; n[y + s][x] = v + 3; n[y + s][x + s] = v + 1;
-    }
-    m = n;
-  }
-  const f = new Float32Array(64);
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) f[y * 8 + x] = (m[y][x] + 0.5) / 64 - 0.5;
-  return f;
-})();
-
-function postDither(ctx, w, h, strength) {
-  if (!(strength > 0)) return;
-  const img = ctx.getImageData(0, 0, w, h), d = img.data;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const t = BAYER8[(y & 7) * 8 + (x & 7)] * strength * 2;
-    const i = (y * w + x) * 4;
-    d[i] += t; d[i + 1] += t; d[i + 2] += t;
   }
   ctx.putImageData(img, 0, 0);
 }
@@ -295,18 +273,6 @@ function postGrain(ctx, w, h, cfg, scale) {
   ctx.restore();
 }
 
-function postVignette(ctx, w, h, amount, softness) {
-  if (!(amount > 0)) return;
-  const r = Math.hypot(w, h) / 2;
-  const g = ctx.createRadialGradient(w / 2, h / 2, r * (1 - clamp01(softness)), w / 2, h / 2, r);
-  g.addColorStop(0, "rgba(0,0,0,0)");
-  g.addColorStop(1, "rgba(0,0,0," + amount + ")");
-  ctx.save();
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-}
-
 function postAdjust(ctx, w, h, cfg) {
   // adj* names, because `contrast` already belongs to the fluid renderer
   const f = [];
@@ -328,7 +294,7 @@ function postAdjust(ctx, w, h, cfg) {
 /* ------------------------------------------------------------- overlay */
 
 function drawOverlay(ctx, w, h, cfg) {
-  if (!cfg.label && !cfg.hexList) return;
+  if (!cfg.label && !cfg.hexList) return null;
   const unit = Math.min(w, h);
   const size = Math.max(7, unit * cfg.labelSize / 100);
   const pad = unit * cfg.labelPad / 100;
@@ -338,7 +304,7 @@ function drawOverlay(ctx, w, h, cfg) {
     if (lines.length) lines.push("–");
     cfg.stops.forEach(s => lines.push(s.hex.toUpperCase()));
   }
-  if (!lines.length) return;
+  if (!lines.length) return null;
   ctx.save();
   ctx.font = "400 " + size + 'px ui-monospace, "SF Mono", Menlo, monospace';
   ctx.textBaseline = "top";
@@ -352,19 +318,27 @@ function drawOverlay(ctx, w, h, cfg) {
   if (pos.startsWith("m")) y = (h - blockH) / 2;
   if (pos.startsWith("b")) y = h - blockH - pad;
   ctx.textAlign = "left";
-  // sample the frame under the block and pick ink that will actually read
-  let ink = cfg.labelColour;
-  if (cfg.labelAuto) {
-    const sx = Math.max(0, Math.min(w - 1, Math.round(x + widest / 2)));
-    const sy = Math.max(0, Math.min(h - 1, Math.round(y + blockH / 2)));
-    const p = ctx.getImageData(sx, sy, 1, 1).data;
-    const lum = (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255;
-    ink = lum > 0.55 ? "#111111" : "#ffffff";
+  // Contrast on a gradient is a range, not a number: check a grid of points
+  // under the whole block and judge each ink by its worst point (WCAG 2 ratio).
+  const relLum = (r, g, b) => 0.2126 * toLin(r) + 0.7152 * toLin(g) + 0.0722 * toLin(b);
+  const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  const bx = Math.max(0, Math.floor(x)), by = Math.max(0, Math.floor(y));
+  const bw = Math.max(1, Math.min(w - bx, Math.ceil(widest))), bh = Math.max(1, Math.min(h - by, Math.ceil(blockH)));
+  const px = ctx.getImageData(bx, by, bw, bh).data, lums = [];
+  for (let j = 0; j < 6; j++) for (let i = 0; i < 9; i++) {
+    const sx = Math.min(bw - 1, Math.round((i + 0.5) / 9 * bw)), sy = Math.min(bh - 1, Math.round((j + 0.5) / 6 * bh));
+    const k = (sy * bw + sx) * 4;
+    lums.push(relLum(px[k], px[k + 1], px[k + 2]));
   }
+  const worst = inkHex => { const c = hexToRgb(inkHex), L = relLum(c[0], c[1], c[2]); return Math.min.apply(null, lums.map(b => ratio(L, b))); };
+  let ink = cfg.labelColour;
+  if (cfg.labelAuto) ink = worst("#111111") >= worst("#ffffff") ? "#111111" : "#ffffff";
+  const contrast = worst(ink);
   ctx.fillStyle = ink;
   ctx.globalAlpha = cfg.labelOpacity;
   lines.forEach((l, i) => ctx.fillText(l, x, y + i * lh));
   ctx.restore();
+  return { ink, contrast };
 }
 
 function drawFrame(ctx, w, h, cfg) {
@@ -382,55 +356,102 @@ function drawFrame(ctx, w, h, cfg) {
 function renderGradient(canvas, cfg, w, h) {
   canvas.width = Math.max(2, Math.round(w));
   canvas.height = Math.max(2, Math.round(h));
+  const W = canvas.width, H = canvas.height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   ctx.filter = "none";
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const ramp = ramps(cfg);
-  (RENDERERS[cfg.type] || drawLinear)(ctx, canvas.width, canvas.height, cfg, ramp);
+  const L = rampLUT(ramps(cfg));
+  const sample = (SAMPLERS[cfg.type] || sampleLinear)(W, H, cfg, L);
 
-  const unit = Math.min(canvas.width, canvas.height);
-  const scale = cfg.w ? canvas.width / cfg.w : 1;
-  postBlur(ctx, canvas.width, canvas.height, cfg.smooth * unit / 100);
-  postAdjust(ctx, canvas.width, canvas.height, cfg);
-  postPosterize(ctx, canvas.width, canvas.height, cfg.posterize);
-  postVignette(ctx, canvas.width, canvas.height, cfg.vignette, cfg.vignetteSoft);
-  postDither(ctx, canvas.width, canvas.height, cfg.dither);
-  postGrain(ctx, canvas.width, canvas.height, cfg, scale);
-  drawOverlay(ctx, canvas.width, canvas.height, cfg);
-  drawFrame(ctx, canvas.width, canvas.height, cfg);
+  // vignette in float too, a dark radial falloff is exactly where 8-bit steps show
+  const vig = cfg.vignette > 0 ? cfg.vignette : 0;
+  const vr = Math.hypot(W, H) / 2, vr0 = vr * (1 - clamp01(cfg.vignetteSoft)), vspan = Math.max(1e-6, vr - vr0);
+  const dith = cfg.dither > 0 ? cfg.dither : 0;
+
+  const img = ctx.createImageData(W, H), d = img.data, o = [0, 0, 0];
+  for (let y = 0; y < H; y++) {
+    const row = (y & 255) << 8;
+    for (let x = 0; x < W; x++) {
+      sample(x + 0.5, y + 0.5, o);
+      let r = o[0], g = o[1], b = o[2];
+      if (vig) {
+        const t = (Math.hypot(x + 0.5 - W / 2, y + 0.5 - H / 2) - vr0) / vspan;
+        if (t > 0) { const k = 1 - vig * (t > 1 ? 1 : t); r *= k; g *= k; b *= k; }
+      }
+      if (dith) { const n = TPDF[row | (x & 255)] * dith; r += n; g += n; b += n; }
+      const i = (y * W + x) << 2;
+      d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;   // Uint8Clamped rounds and clamps
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const unit = Math.min(W, H);
+  const scale = cfg.w ? W / cfg.w : 1;
+  postBlur(ctx, W, H, cfg.smooth * unit / 100);
+  postAdjust(ctx, W, H, cfg);
+  postPosterize(ctx, W, H, cfg.posterize);
+  postGrain(ctx, W, H, cfg, scale);
+  canvas.labelInfo = drawOverlay(ctx, W, H, cfg);
+  drawFrame(ctx, W, H, cfg);
   return canvas;
 }
 
 /* ------------------------------------------------------------ code export */
 
+// Copy CSS: a hex-stop fallback first, then the same gradient mixed natively
+// by the browser (CSS Color 4 interpolation, Baseline 2024). Browsers that do
+// not understand the second line keep the first.
+const oklchCss = rgb => {
+  const lch = rgbToLch(rgb), h = ((lch[2] * 180 / Math.PI) % 360 + 360) % 360;
+  return "oklch(" + (lch[0] * 100).toFixed(1) + "% " + lch[1].toFixed(3) + " " + h.toFixed(1) + ")";
+};
 function cssGradient(cfg) {
   const ramp = ramps(cfg);
   const n = 12;
-  const stops = [];
-  for (let i = 0; i <= n; i++) stops.push(rgbToHex(ramp(i / n)) + " " + Math.round(i / n * 100) + "%");
-  if (cfg.type === "radial" || cfg.type === "mesh" || cfg.type === "fluid") {
-    if (cfg.type === "mesh") {
-      // a stack of radial blobs is the honest CSS equivalent of a mesh
-      const pts = meshPoints(cfg);
-      const layers = pts.map(p => "radial-gradient(circle at " + (p.x * 100).toFixed(1) + "% " +
-        (p.y * 100).toFixed(1) + "%, " + rgbToHex(oklabToRgb(p.lab)) + " 0%, transparent " +
-        Math.round(p.r * 100) + "%)");
-      return "background-color: " + cfg.stops[0].hex + ";\nbackground-image:\n  " + layers.join(",\n  ") + ";";
-    }
-    return "background-image: radial-gradient(circle at " + Math.round(cfg.cx * 100) + "% " +
-      Math.round(cfg.cy * 100) + "%, " + stops.join(", ") + ");";
+  const hexStops = [], okStops = [];
+  for (let i = 0; i <= n; i++) {
+    const c = ramp(i / n), pc = Math.round(i / n * 100) + "%";
+    hexStops.push(rgbToHex(c) + " " + pc);
+    okStops.push(oklchCss(c) + " " + pc);
   }
-  if (cfg.type === "conic") {
-    return "background-image: conic-gradient(from " + Math.round(cfg.angle) + "deg at " +
-      Math.round(cfg.cx * 100) + "% " + Math.round(cfg.cy * 100) + "%, " + stops.join(", ") + ");";
+  if (cfg.type === "mesh") {
+    // a stack of radial blobs is the honest CSS equivalent of a mesh
+    const pts = meshPoints(cfg);
+    const layers = pts.map(p => "radial-gradient(circle at " + (p.x * 100).toFixed(1) + "% " +
+      (p.y * 100).toFixed(1) + "%, " + rgbToHex(oklabToRgbMapped(p.lab)) + " 0%, transparent " +
+      Math.round(p.r * 100) + "%)");
+    return "background-color: " + cfg.stops[0].hex + ";\nbackground-image:\n  " + layers.join(",\n  ") + ";";
   }
-  // CSS measures from "to top" while canvas measures from the x axis
-  const deg = (Math.round(cfg.angle || 0) + 90) % 360;
-  return "background-image: linear-gradient(" + deg + "deg, " + stops.join(", ") + ");";
+  // When the ramp is plain (no easing, bias or spline) hand CSS the real stops
+  // and let it mix in the same space; otherwise give it the sampled curve.
+  const plain = !cfg.spline && cfg.easing === "linear" && Math.abs((cfg.bias ?? 0.5) - 0.5) < 1e-3;
+  const spaceKw = { oklab: "oklab", oklch: "oklch", srgb: "srgb", linear: "srgb-linear", hsl: "hsl" }[cfg.space] || "oklab";
+  const polar = cfg.space === "oklch" || cfg.space === "hsl";
+  const method = plain
+    ? "in " + spaceKw + (polar && cfg.hue && cfg.hue !== "shorter" ? " " + cfg.hue + " hue" : "")
+    : "in oklab";
+  const modernStops = plain
+    ? cfg.stops.slice().sort((a, b) => a.pos - b.pos).map(st => st.hex + " " + Math.round(st.pos * 100) + "%")
+    : okStops;
+  let shape, shapeModern;
+  if (cfg.type === "radial" || cfg.type === "fluid") {
+    shape = "radial-gradient(circle at " + Math.round(cfg.cx * 100) + "% " + Math.round(cfg.cy * 100) + "%, ";
+    shapeModern = "radial-gradient(circle at " + Math.round(cfg.cx * 100) + "% " + Math.round(cfg.cy * 100) + "% " + method + ", ";
+  } else if (cfg.type === "conic") {
+    const at = "from " + Math.round(cfg.angle) + "deg at " + Math.round(cfg.cx * 100) + "% " + Math.round(cfg.cy * 100) + "%";
+    shape = "conic-gradient(" + at + ", ";
+    shapeModern = "conic-gradient(" + at + " " + method + ", ";
+  } else {
+    // CSS measures from "to top" while canvas measures from the x axis
+    const deg = (Math.round(cfg.angle || 0) + 90) % 360;
+    shape = "linear-gradient(" + deg + "deg, ";
+    shapeModern = "linear-gradient(" + deg + "deg " + method + ", ";
+  }
+  return "background-image: " + shape + hexStops.join(", ") + ");\n" +
+         "background-image: " + shapeModern + modernStops.join(", ") + ");";
 }
 
 function svgGradient(cfg, w, h) {

@@ -1056,18 +1056,44 @@ stageEl.addEventListener("pointerup", endDrag);
 stageEl.addEventListener("pointercancel", endDrag);
 stageEl.addEventListener("pointerleave", () => { $("#tip").style.display = "none"; });
 stageEl.addEventListener("dblclick", fitView);
-stageEl.addEventListener("wheel", e => {
-  e.preventDefault();
+// Zoom changes how big the outline is drawn, never the size of points,
+// handles or lines (their unit ignores zoom), so zooming in shows detail.
+// That only holds if the browser leaves the page alone, so every zoom gesture
+// over the stage is caught here instead of scaling the whole page.
+function zoomAt(clientX, clientY, factor) {
   const r = stageEl.getBoundingClientRect();
-  const k = Math.exp(-e.deltaY * 0.0015);
-  const nz = Math.max(0.2, Math.min(40, view.zoom * k));
-  // zoom about the cursor
-  const cx = e.clientX - r.left - r.width / 2, cy = e.clientY - r.top - r.height / 2;
+  const nz = Math.max(0.2, Math.min(40, view.zoom * factor));
+  const cx = clientX - r.left - r.width / 2, cy = clientY - r.top - r.height / 2;
   view.px = cx - (cx - view.px) * (nz / view.zoom);
   view.py = cy - (cy - view.py) * (nz / view.zoom);
   view.zoom = nz;
   draw();
+}
+stageEl.addEventListener("wheel", e => {
+  e.preventDefault();
+  // A trackpad pinch arrives as ctrl+wheel (Chrome, Firefox, Edge). A mouse
+  // wheel sends whole notches; a two-finger scroll sends small fractional or
+  // sideways deltas, and that pans, as it does in Figma or Illustrator.
+  const trackpadScroll = !e.ctrlKey && e.deltaMode === 0 &&
+    (e.deltaX !== 0 || !Number.isInteger(e.deltaY) || Math.abs(e.deltaY) < 40);
+  if (trackpadScroll) {
+    view.px -= e.deltaX; view.py -= e.deltaY;
+    draw();
+    return;
+  }
+  const speed = e.ctrlKey ? 0.01 : 0.0015;   // pinch deltas are small, wheel notches big
+  zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * speed));
 }, { passive: false });
+// Safari sends a trackpad pinch as gesture events, not wheel, and zooms the
+// whole page with them unless they are stopped.
+let gestureScale = 1;
+stageEl.addEventListener("gesturestart", e => { e.preventDefault(); gestureScale = 1; });
+stageEl.addEventListener("gesturechange", e => {
+  e.preventDefault();
+  zoomAt(e.clientX, e.clientY, e.scale / gestureScale);
+  gestureScale = e.scale;
+});
+stageEl.addEventListener("gestureend", e => e.preventDefault());
 const zoomBy = f => { view.zoom = Math.max(0.2, Math.min(40, view.zoom * f)); view.px *= f; view.py *= f; draw(); };
 $("#fitBtn").addEventListener("click", fitView);
 $("#zoomIn").addEventListener("click", () => zoomBy(1.25));

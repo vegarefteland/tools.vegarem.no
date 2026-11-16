@@ -52,10 +52,65 @@ function oklabToRgb(lab) {
   ];
 }
 
+/* ------------------------------------------------------- gamut mapping
+ * A mix in OKLab/OKLCH can land outside sRGB. Clipping each channel on its own
+ * (what oklabToRgb does) bends the hue, which shows as a sudden shift in the
+ * middle of a vivid ramp. This is the CSS Color 4 gamut-mapping algorithm:
+ * keep lightness and hue, binary-search chroma down until clipping what is left
+ * changes the colour by less than a JND (deltaEOK 0.02).
+ * https://www.w3.org/TR/css-color-4/#gamut-mapping */
+const oklabToLin = lab => {
+  const l_ = lab[0] + 0.3963377774 * lab[1] + 0.2158037573 * lab[2];
+  const m_ = lab[0] - 0.1055613458 * lab[1] - 0.0638541728 * lab[2];
+  const s_ = lab[0] - 0.0894841775 * lab[1] - 1.2914855480 * lab[2];
+  const l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_;
+  return [+4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+          -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+          -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+};
+const linToOklab = c => {
+  const l = Math.cbrt(0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2]);
+  const m = Math.cbrt(0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2]);
+  const s = Math.cbrt(0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2]);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+          1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+          0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+};
+const GAMUT_EPS = 1e-5, JND = 0.02;
+const inGamut = lin => lin[0] >= -GAMUT_EPS && lin[0] <= 1 + GAMUT_EPS && lin[1] >= -GAMUT_EPS &&
+  lin[1] <= 1 + GAMUT_EPS && lin[2] >= -GAMUT_EPS && lin[2] <= 1 + GAMUT_EPS;
+const linToSrgb = lin => [toSrgb(lin[0]), toSrgb(lin[1]), toSrgb(lin[2])];
+const deltaEOK = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+function oklabToRgbMapped(lab) {
+  const L = lab[0];
+  if (L >= 1) return [255, 255, 255];
+  if (L <= 0) return [0, 0, 0];
+  const lin = oklabToLin(lab);
+  if (inGamut(lin)) return linToSrgb(lin);
+  const C = Math.hypot(lab[1], lab[2]), h = Math.atan2(lab[2], lab[1]);
+  const at = c => [L, c * Math.cos(h), c * Math.sin(h)];
+  const clipOf = cur => { const l2 = oklabToLin(cur).map(clamp01); return { lin: l2, lab: linToOklab(l2) }; };
+  let clipped = clipOf(lab);
+  if (deltaEOK(clipped.lab, lab) < JND) return linToSrgb(clipped.lin);
+  let lo = 0, hi = C, minInGamut = true;
+  while (hi - lo > 1e-4) {
+    const c = (lo + hi) / 2, cur = at(c);
+    if (minInGamut && inGamut(oklabToLin(cur))) { lo = c; continue; }
+    clipped = clipOf(cur);
+    const E = deltaEOK(clipped.lab, cur);
+    if (E < JND) {
+      if (JND - E < 1e-4) break;
+      minInGamut = false; lo = c;
+    } else hi = c;
+  }
+  return linToSrgb(clipped.lin);
+}
+
 const oklabToLch = lab => [lab[0], Math.hypot(lab[1], lab[2]), Math.atan2(lab[2], lab[1])];
 const lchToOklab = lch => [lch[0], lch[1] * Math.cos(lch[2]), lch[1] * Math.sin(lch[2])];
 const rgbToLch = rgb => oklabToLch(rgbToOklab(rgb));
-const lchToRgb = lch => oklabToRgb(lchToOklab(lch));
+const lchToRgb = lch => oklabToRgbMapped(lchToOklab(lch));
 
 function rgbToHsl(rgb) {
   const r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
@@ -90,26 +145,42 @@ const SPACE_LABELS = {
   hsl: "HSL (rainbow-ish)",
 };
 
-// Mix two colours at t in the chosen space.
-function mix(c1, c2, t, space) {
+// Which way round the hue wheel a polar mix travels, the four CSS Color 4
+// <hue-interpolation-method> routes.
+const HUES = ["shorter", "longer", "increasing", "decreasing"];
+const HUE_LABELS = { shorter: "Shorter way round", longer: "Longer way round",
+  increasing: "Increasing hue", decreasing: "Decreasing hue" };
+function hueDelta(d, method, full) {
+  const half = full / 2;
+  if (method === "longer") { if (d > 0 && d < half) d -= full; else if (d > -half && d <= 0) d += full; }
+  else if (method === "increasing") { if (d < 0) d += full; }
+  else if (method === "decreasing") { if (d > 0) d -= full; }
+  else { if (d > half) d -= full; else if (d < -half) d += full; }
+  return d;
+}
+
+// Mix two colours at t in the chosen space. A grey has no hue of its own, so
+// in polar spaces it borrows the other colour's (CSS "powerless" hue);
+// otherwise white-to-blue in OKLCH would swing through red on the way.
+function mix(c1, c2, t, space, hue) {
   if (space === "srgb") return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
   if (space === "linear") {
     return [0, 1, 2].map(i => toSrgb(lerp(toLin(c1[i]), toLin(c2[i]), t)));
   }
   if (space === "hsl") {
     const a = rgbToHsl(c1), b = rgbToHsl(c2);
-    let dh = b[0] - a[0];
-    if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
-    return hslToRgb([(a[0] + dh * t + 360) % 360, lerp(a[1], b[1], t), lerp(a[2], b[2], t)]);
+    if (a[1] < 1e-4) a[0] = b[0]; if (b[1] < 1e-4) b[0] = a[0];
+    const dh = hueDelta(b[0] - a[0], hue, 360);
+    return hslToRgb([((a[0] + dh * t) % 360 + 360) % 360, lerp(a[1], b[1], t), lerp(a[2], b[2], t)]);
   }
   if (space === "oklch") {
     const a = rgbToLch(c1), b = rgbToLch(c2);
-    let dh = b[2] - a[2];
-    if (dh > Math.PI) dh -= 2 * Math.PI; else if (dh < -Math.PI) dh += 2 * Math.PI;
+    if (a[1] < 1e-4) a[2] = b[2]; if (b[1] < 1e-4) b[2] = a[2];
+    const dh = hueDelta(b[2] - a[2], hue, 2 * Math.PI);
     return lchToRgb([lerp(a[0], b[0], t), lerp(a[1], b[1], t), a[2] + dh * t]);
   }
   const a = rgbToOklab(c1), b = rgbToOklab(c2);
-  return oklabToRgb([lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]);
+  return oklabToRgbMapped([lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]);
 }
 
 /* ---------------------------------------------------------------- easing */
@@ -131,12 +202,56 @@ const EASING_LABELS = {
 
 /* --------------------------------------------------------------- the ramp */
 
-// stops: [{ pos: 0..1, hex }], returns a function t -> [r,g,b]
-function makeRamp(stops, space, easing, bias) {
+// Monotone cubic (Fritsch-Carlson) through points (x, y). Smooth at every
+// knot, so no slope jump for the eye to read as a band, and it never
+// overshoots between two knots, so a channel cannot ring past its stops.
+function monotone(xs, ys) {
+  const n = xs.length, d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / Math.max(1e-9, xs[i + 1] - xs[i]));
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); m[i] = k * a * d[i]; m[i + 1] = k * b * d[i]; }
+  }
+  return x => {
+    let i = 0;
+    while (i < n - 2 && x > xs[i + 1]) i++;
+    const h = Math.max(1e-9, xs[i + 1] - xs[i]), u = (x - xs[i]) / h;
+    const u2 = u * u, u3 = u2 * u;
+    return (2 * u3 - 3 * u2 + 1) * ys[i] + (u3 - 2 * u2 + u) * h * m[i] +
+           (-2 * u3 + 3 * u2) * ys[i + 1] + (u3 - u2) * h * m[i + 1];
+  };
+}
+
+// stops: [{ pos: 0..1, hex }], returns a function t -> [r,g,b] (floats).
+// opts.hue: hue route for polar spaces. opts.spline: one smooth curve through
+// every stop in OKLab instead of straight segments joined at each stop.
+function makeRamp(stops, space, easing, bias, opts) {
+  opts = opts || {};
   const list = stops.slice().sort((a, b) => a.pos - b.pos)
     .map(s => ({ pos: clamp01(s.pos), rgb: hexToRgb(s.hex) }));
   if (!list.length) return () => [0, 0, 0];
   if (list.length === 1) return () => list[0].rgb;
+  if (opts.spline && list.length > 2) {
+    // de-duplicate positions so the curve stays a function of t
+    const xs = [], labs = [];
+    list.forEach(s => {
+      if (xs.length && s.pos - xs[xs.length - 1] < 1e-6) { labs[labs.length - 1] = rgbToOklab(s.rgb); return; }
+      xs.push(s.pos); labs.push(rgbToOklab(s.rgb));
+    });
+    if (xs.length > 2) {
+      const ch = [0, 1, 2].map(k => monotone(xs, labs.map(l => l[k])));
+      const lo = xs[0], hi = xs[xs.length - 1];
+      return function (t) {
+        t = clamp01(t);
+        if (t <= lo) return list[0].rgb;
+        if (t >= hi) return list[list.length - 1].rgb;
+        return oklabToRgbMapped([ch[0](t), ch[1](t), ch[2](t)]);
+      };
+    }
+  }
   const ease = EASINGS[easing] || EASINGS.linear;
   const b = bias == null ? 0.5 : bias;
   return function (t) {
@@ -149,8 +264,17 @@ function makeRamp(stops, space, easing, bias) {
     let u = (t - a.pos) / Math.max(1e-6, c.pos - a.pos);
     // bias pushes the midpoint toward one end without moving the stops
     if (b !== 0.5) u = b <= 0 ? 1 : Math.pow(u, Math.log(0.5) / Math.log(clamp01(b)));
-    return mix(a.rgb, c.rgb, ease(u), space);
+    return mix(a.rgb, c.rgb, ease(u), space, opts.hue);
   };
+}
+
+// The ramp pre-sampled as floats, read with linear interpolation, so a
+// per-pixel renderer costs one lookup instead of a colour conversion.
+function rampLUT(ramp, n) {
+  n = n || 2048;
+  const lut = new Float32Array((n + 1) * 3);
+  for (let i = 0; i <= n; i++) { const c = ramp(i / n); lut[i * 3] = c[0]; lut[i * 3 + 1] = c[1]; lut[i * 3 + 2] = c[2]; }
+  return { n, lut };
 }
 
 // Sample a ramp into canvas colour stops, this is how OKLab mixing survives
@@ -323,5 +447,6 @@ function fbm(x, y, seed, oct) {
 if (typeof module !== "undefined") {
   module.exports = { hexToRgb, rgbToHex, rgbToOklab, oklabToRgb, rgbToLch, lchToRgb,
     mix, makeRamp, EASINGS, SPACES, PALETTES, paletteColours, generatePalette,
-    HARMONIES, rng, hashSeed, fbm, vnoise, clamp01, lerp };
+    HARMONIES, rng, hashSeed, fbm, vnoise, clamp01, lerp,
+    oklabToRgbMapped, oklabToLin, inGamut, deltaEOK, monotone, hueDelta, HUES, rampLUT };
 }

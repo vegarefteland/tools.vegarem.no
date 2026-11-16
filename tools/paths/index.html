@@ -87,7 +87,7 @@
 
   /* ─── Stage ─────────────────────────────────────────────── */
   .stage-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
-  .stage { position: relative; flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius);
+  .stage { position: relative; flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); touch-action: none;
     overflow: hidden; cursor: grab; }
   .stage.dragging { cursor: grabbing; }
   .stage.drop::after { content: "Drop a font or an SVG"; position: absolute; inset: 10px; border: 2px dashed var(--fg);

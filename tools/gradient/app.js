@@ -36,13 +36,13 @@ const DEFAULTS = {
   type: "mesh", seed: "seihitsu",
   stops: [{ pos: 0, hex: "#0a0912" }, { pos: 0.35, hex: "#241a35" },
           { pos: 0.62, hex: "#c2405c" }, { pos: 0.82, hex: "#f4b3ad" }, { pos: 1, hex: "#e9e7e4" }],
-  space: "oklab", easing: "smooth", bias: 0.5,
+  space: "oklab", easing: "smooth", bias: 0.5, hue: "shorter", spline: false,
   angle: 90, cx: 0.5, cy: 0.5, radius: 1, inner: 0, squash: 1, mirror: true,
   horizon: 0.52, reflect: 0.85, deepen: 0.5, line: 0,
   bands: 6, soft: 0.4, alternate: true,
-  points: 5, spread: 0.85, falloff: 0.5,
+  points: 5, spread: 0.85, falloff: 0.5, meshStyle: "soft", meshPos: null,
   scale: 2.4, warp: 0.6, detail: 4, contrast: 0.2,
-  smooth: 0, grain: 0.14, grainSize: 1.6, grainColour: false, dither: 0.7,
+  smooth: 0, grain: 0.14, grainSize: 1.6, grainColour: false, dither: 1,
   posterize: 0, vignette: 0.16, vignetteSoft: 0.55,
   adjBright: 1, adjContrast: 1, adjSat: 1, adjHue: 0,
   w: 1080, h: 1350, margin: 0,
@@ -79,7 +79,11 @@ function R(key, label, min, max, step, o) {
     inp.value = C[key];
     val.textContent = o.fmt ? o.fmt(C[key]) : Number(C[key]).toFixed(d) + (o.unit || "");
   };
-  inp.addEventListener("input", () => { C[key] = parseFloat(inp.value); show(); draw(); persist(); });
+  inp.addEventListener("input", () => {
+    const was = C[key] > 0;
+    C[key] = parseFloat(inp.value); show(); draw(); persist();
+    if ((C[key] > 0) !== was) sync();   // e.g. grain 0 ↔ on shows or hides its sub-controls
+  });
   return { el, show, key, show_if: o.show };
 }
 function Sel(key, label, options, o) {
@@ -121,6 +125,7 @@ const TYPE_PARAMS = [
   R("bands", "Bands", 2, 24, 1, { show: isType("bands") }),
   R("soft", "Band softness", 0, 1, 0.01, { show: isType("bands") }),
   Chk("alternate", "Alternate direction", { show: isType("bands") }),
+  Sel("meshStyle", "Mesh style", [["soft", "Soft (smooth field)"], ["points", "Points (sharper, classic)"]], { show: isType("mesh") }),
   R("points", "Colour points", 2, 12, 1, { show: isType("mesh") }),
   R("spread", "Spread", 0.2, 2, 0.01, { show: isType("mesh") }),
   R("falloff", "Falloff", 0, 1, 0.01, { show: isType("mesh") }),
@@ -129,15 +134,28 @@ const TYPE_PARAMS = [
   R("detail", "Detail", 1, 7, 1, { show: isType("fluid") }),
   R("contrast", "Contrast", 0, 1, 0.01, { show: isType("fluid") }),
 ];
+// "Reset points" appears once a mesh point has been dragged.
+const resetPts = (() => {
+  const el = mk("button", "pill-btn", "Reset dragged points");
+  el.addEventListener("click", () => { C.meshPos = null; sync(); draw(); persist(); });
+  return { el, show: () => {}, show_if: () => C.type === "mesh" && Array.isArray(C.meshPos) };
+})();
+const dragHint = (() => {
+  const el = mk("div", "note");
+  return { el, show: () => { el.textContent = C.type === "mesh" ? "Drag the points on the preview to move the colours."
+    : "Drag the centre on the preview."; }, show_if: () => ["mesh", "radial", "conic"].includes(C.type) };
+})();
+TYPE_PARAMS.push(resetPts, dragHint);
+
 const FINISH_PARAMS = [
   R("smooth", "Smooth", 0, 8, 0.1, { fmt: v => Number(v).toFixed(1) + "%" }),
   R("grain", "Grain", 0, 0.7, 0.01),
-  R("grainSize", "Grain size", 0.5, 6, 0.1, { fmt: v => Number(v).toFixed(1) + "×" }),
-  Chk("grainColour", "Colour grain"),
-  R("dither", "Anti-banding", 0, 2, 0.05),
+  R("grainSize", "Grain size", 0.5, 6, 0.1, { fmt: v => Number(v).toFixed(1) + "×", show: () => C.grain > 0 }),
+  Chk("grainColour", "Colour grain", { show: () => C.grain > 0 }),
+  R("dither", "Anti-banding", 0, 2, 0.05, { fmt: v => (v > 0 ? "±" + Number(v).toFixed(2) + " step" : "off") }),
   R("posterize", "Posterize", 0, 32, 1, { fmt: v => (v < 2 ? "off" : v + " steps") }),
   R("vignette", "Vignette", 0, 0.9, 0.01),
-  R("vignetteSoft", "Vignette softness", 0.05, 1, 0.01),
+  R("vignetteSoft", "Vignette softness", 0.05, 1, 0.01, { show: () => C.vignette > 0 }),
   R("adjBright", "Brightness", 0.4, 1.8, 0.01, { fmt: v => Number(v).toFixed(2) + "×" }),
   R("adjContrast", "Contrast", 0.4, 2, 0.01, { fmt: v => Number(v).toFixed(2) + "×" }),
   R("adjSat", "Saturation", 0, 2.5, 0.01, { fmt: v => Number(v).toFixed(2) + "×" }),
@@ -161,10 +179,13 @@ $$("#typeSeg button").forEach(b => b.addEventListener("click", () => {
   C.type = b.dataset.type; sync(); draw(); persist();
 }));
 $("#space").innerHTML = SPACES.map(s => '<option value="' + s + '">' + SPACE_LABELS[s] + "</option>").join("");
-$("#space").addEventListener("change", e => { C.space = e.target.value; draw(); persist(); });
+$("#space").addEventListener("change", e => { C.space = e.target.value; sync(); draw(); persist(); });
+$("#hue").innerHTML = HUES.map(h => '<option value="' + h + '">' + HUE_LABELS[h] + "</option>").join("");
+$("#hue").addEventListener("change", e => { C.hue = e.target.value; sync(); draw(); persist(); });
+$("#spline").addEventListener("change", e => { C.spline = e.target.checked; sync(); draw(); persist(); });
 $("#easing").innerHTML = Object.keys(EASINGS).map(k => '<option value="' + k + '">' + EASING_LABELS[k] + "</option>").join("");
 $("#easing").addEventListener("change", e => { C.easing = e.target.value; draw(); persist(); });
-const biasCtl = R("bias", "Midpoint bias", 0.05, 0.95, 0.01, { fmt: pct });
+const biasCtl = R("bias", "Midpoint bias", 0.05, 0.95, 0.01, { fmt: pct, show: () => !C.spline });
 $("#biasCtl").replaceWith(biasCtl.el);
 ALL.push(biasCtl);
 
@@ -186,7 +207,8 @@ $$("#famSeg button").forEach(b => b.addEventListener("click", () => {
 $("#palSearch").addEventListener("input", drawPalettes);
 
 function rampCss(cols) {
-  const ramp = makeRamp(cols.map((hex, i) => ({ pos: i / Math.max(1, cols.length - 1), hex })), C.space, "linear", 0.5);
+  const ramp = makeRamp(cols.map((hex, i) => ({ pos: i / Math.max(1, cols.length - 1), hex })), C.space, "linear", 0.5,
+    { hue: C.hue, spline: C.spline });
   const out = [];
   for (let i = 0; i <= 10; i++) out.push(rgbToHex(ramp(i / 10)) + " " + i * 10 + "%");
   return "linear-gradient(90deg," + out.join(",") + ")";
@@ -236,7 +258,7 @@ function drawStops() {
   $("#rampPreview").style.background = rampCss(C.stops.map(s => s.hex));
 }
 $("#addStop").addEventListener("click", () => {
-  const ramp = makeRamp(C.stops, C.space, C.easing, C.bias);
+  const ramp = makeRamp(C.stops, C.space, C.easing, C.bias, { hue: C.hue, spline: C.spline });
   C.stops.push({ pos: 0.5, hex: rgbToHex(ramp(0.5)) });
   C.stops.sort((a, b) => a.pos - b.pos);
   sync(); draw(); persist();
@@ -309,6 +331,8 @@ function applySeed(seed) {
       applyPaletteSilent(generatePalette(seed + "|pal", r.pick(HARMONIES), r.int(3, 6)));
     }
     C.space = r.chance(0.75) ? "oklab" : r.pick(SPACES);
+    C.hue = r.chance(0.8) ? "shorter" : r.pick(HUES);
+    C.spline = r.chance(0.4);
     C.easing = r.pick(Object.keys(EASINGS));
     C.bias = +r.range(0.3, 0.7).toFixed(2);
   }
@@ -324,6 +348,7 @@ function applySeed(seed) {
   C.bands = r.int(3, 12);
   C.soft = +r.range(0, 0.8).toFixed(2);
   C.points = r.int(3, 8);
+  C.meshPos = null;
   C.spread = +r.range(0.5, 1.3).toFixed(2);
   C.falloff = +r.range(0.2, 0.8).toFixed(2);
   C.scale = +r.range(1, 5).toFixed(1);
@@ -394,6 +419,12 @@ function draw(immediate) {
     const t0 = performance.now();
     renderGradient(out, C, rw, rh);
     out.style.width = fit.w + "px"; out.style.height = fit.h + "px";
+    const li = out.labelInfo;
+    $("#contrastNote").textContent = li
+      ? "Worst-case contrast " + li.contrast.toFixed(1) + ":1, " +
+        (li.contrast >= 4.5 ? "passes WCAG AA for text" : li.contrast >= 3 ? "large text only (AA)" : "too low to read reliably")
+      : "";
+    placeHandles();
     $("#sizeNote").textContent = C.w + " × " + C.h + " px  ·  preview " + rw + " × " + rh +
       "  ·  " + (performance.now() - t0).toFixed(0) + " ms";
   };
@@ -410,6 +441,10 @@ function sync() {
   $$("#typeSeg button").forEach(b => b.classList.toggle("active", b.dataset.type === C.type));
   $$("#labelPos button").forEach(b => b.classList.toggle("active", b.dataset.pos === C.labelPos));
   $("#space").value = C.space;
+  $("#hue").value = C.hue || "shorter";
+  $("#hueCtl").classList.toggle("hidden", !(C.space === "oklch" || C.space === "hsl"));
+  $("#spline").checked = !!C.spline;
+  $("#easingCtl").classList.toggle("hidden", !!C.spline);
   $("#easing").value = C.easing;
   $("#seed").value = C.seed;
   $("#cw").value = C.w; $("#chh").value = C.h;
@@ -427,6 +462,59 @@ function sync() {
   drawStops();
 }
 
+/* ============================================================== handles
+ * Mesh points and the radial/conic centre can be dragged on the preview.
+ * Positions are stored as fractions of the canvas, like everything else. */
+function handleSpots() {
+  if (C.type === "mesh") return meshPoints(C).map((p, i) => ({ i, x: p.x, y: p.y, col: rgbToHex(oklabToRgbMapped(p.lab)) }));
+  if (C.type === "radial" || C.type === "conic") return [{ i: -1, x: C.cx, y: C.cy, col: "#ffffff" }];
+  return [];
+}
+let dragging = false;
+function placeHandles() {
+  if (dragging) return;   // rebuilding would destroy the handle under the pointer
+  const host = $("#handles"), stageR = $("#stage").getBoundingClientRect(), r = out.getBoundingClientRect();
+  host.innerHTML = "";
+  handleSpots().forEach(s => {
+    const h = mk("div", "handle");
+    h.style.left = (r.left - stageR.left + s.x * r.width) + "px";
+    h.style.top = (r.top - stageR.top + s.y * r.height) + "px";
+    h.style.background = s.col;
+    h.title = s.i < 0 ? "Centre" : "Colour point " + (s.i + 1);
+    h.addEventListener("pointerdown", e => startDrag(e, s.i, h));
+    host.append(h);
+  });
+}
+function startDrag(e, idx, el) {
+  e.preventDefault();
+  el.setPointerCapture(e.pointerId);
+  el.classList.add("dragging");
+  dragging = true;
+  if (idx >= 0 && !Array.isArray(C.meshPos)) C.meshPos = meshPoints(C).map(p => [p.x, p.y]);
+  const move = ev => {
+    const r = out.getBoundingClientRect();
+    // mesh points may sit a little off-canvas, as seeded ones do; the centre stays on it
+    const lim = idx >= 0 ? [-0.25, 1.25] : [0, 1];
+    const fx = Math.min(lim[1], Math.max(lim[0], (ev.clientX - r.left) / r.width));
+    const fy = Math.min(lim[1], Math.max(lim[0], (ev.clientY - r.top) / r.height));
+    if (idx >= 0) C.meshPos[idx] = [+fx.toFixed(4), +fy.toFixed(4)];
+    else { C.cx = +fx.toFixed(3); C.cy = +fy.toFixed(3); }
+    const stageR = $("#stage").getBoundingClientRect();
+    el.style.left = (r.left - stageR.left + fx * r.width) + "px";
+    el.style.top = (r.top - stageR.top + fy * r.height) + "px";
+    draw();
+  };
+  const up = () => {
+    el.removeEventListener("pointermove", move);
+    el.classList.remove("dragging");
+    dragging = false;
+    sync(); persist(); placeHandles();
+  };
+  el.addEventListener("pointermove", move);
+  el.addEventListener("pointerup", up, { once: true });
+  el.addEventListener("pointercancel", up, { once: true });
+}
+
 /* ================================================================ export */
 function download(blob, name) {
   const a = document.createElement("a");
@@ -439,14 +527,19 @@ const fileName = ext => (C.seed || "gradient").replace(/[^a-z0-9-]+/gi, "-").toL
 function exportRaster(scale, mime, quality) {
   const c = document.createElement("canvas");
   renderGradient(c, C, C.w * scale, C.h * scale);
+  const ext = { "image/jpeg": "jpg", "image/webp": "webp" }[mime] || "png";
   c.toBlob(b => {
-    download(b, fileName(mime === "image/jpeg" ? "jpg" : "png"));
-    toast((mime === "image/jpeg" ? "JPEG" : "PNG") + " " + c.width + "×" + c.height + " saved");
+    download(b, fileName(ext));
+    toast(ext.toUpperCase() + " " + c.width + "×" + c.height + " saved");
   }, mime, quality);
 }
 $("#png1").addEventListener("click", () => exportRaster(1, "image/png"));
 $("#png2").addEventListener("click", () => exportRaster(2, "image/png"));
 $("#jpg").addEventListener("click", () => exportRaster(1, "image/jpeg", 0.92));
+$("#webp").addEventListener("click", () => exportRaster(1, "image/webp", 0.95));
+// Safari can't encode WebP from a canvas; hide the button rather than hand back a PNG named .webp.
+(() => { const t = document.createElement("canvas"); t.width = t.height = 1;
+  if (!t.toDataURL("image/webp").startsWith("data:image/webp")) $("#webp").style.display = "none"; })();
 $("#svg").addEventListener("click", () => {
   download(new Blob([svgGradient(C, C.w, C.h)], { type: "image/svg+xml" }), fileName("svg"));
   toast(VECTOR_TYPES.includes(C.type) ? "SVG saved" : "SVG saved, approximate for this type");
