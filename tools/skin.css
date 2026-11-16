@@ -223,3 +223,12 @@ html[data-theme="dark"] :is(.seg, .tabs, .layout-toggle) button.active { backgro
   padding: 11px 18px;
   box-shadow: none;
 }
+
+/* ─── Notes: a quiet tone strip; hidden when there is nothing to say ─ */
+:root .engine-note {
+  border-color: transparent;
+  background: var(--tone);
+  border-radius: var(--r-pill);
+  color: var(--muted);
+}
+:root .engine-note:empty { display: none; }
