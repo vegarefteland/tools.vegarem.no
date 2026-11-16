@@ -1,4 +1,4 @@
-/* Pixel, Bitmap & ASCII — render engine.
+/* Pixel, Bitmap & ASCII, render engine.
  *
  * Per frame:
  *   source → sample grid (box-filtered in halvings, so video doesn't shimmer)
@@ -82,7 +82,7 @@ const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const frac = v => v - Math.floor(v);
 const luma = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
-// Deterministic 0..1 from two integers — every "random" effect goes through
+// Deterministic 0..1 from two integers, every "random" effect goes through
 // this, keyed on frame number, so a render export matches the preview.
 function hash(a, b) {
   let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) | 0;
@@ -109,7 +109,7 @@ function gradAt(stops, t) {
   return [b[0] + (c[0] - b[0]) * k, b[1] + (c[1] - b[1]) * k, b[2] + (c[2] - b[2]) * k];
 }
 
-// Red-mean weighted distance — cheap and far closer to perceived colour
+// Red-mean weighted distance, cheap and far closer to perceived colour
 // difference than plain RGB distance.
 function nearestIdx(P, r, g, b) {
   let best = 0, bd = Infinity;
@@ -150,7 +150,7 @@ function bayerMatrix(n) {
 }
 const B2 = bayerMatrix(2), B4 = bayerMatrix(4), B8 = bayerMatrix(8), B16 = bayerMatrix(16);
 // Clustered-dot: thresholds grow outward from the centre, so tone becomes
-// dot size — the newspaper look rather than Bayer's crosshatch.
+// dot size, the newspaper look rather than Bayer's crosshatch.
 const CL4 = new Float32Array([12, 5, 6, 13, 4, 0, 1, 7, 11, 3, 2, 8, 15, 10, 9, 14].map(v => (v + 0.5) / 16));
 
 function thresholdAt(algo, x, y, frame) {
@@ -291,7 +291,7 @@ function poly(p, pts, cx, cy, sx, sy, rot) {
 }
 
 // Adds one shape to a path. `p` is either a CanvasRenderingContext2D or an
-// SvgPath — both expose the same drawing verbs — so canvas and SVG export
+// SvgPath, both expose the same drawing verbs, so canvas and SVG export
 // share exactly one piece of geometry code.
 function addShape(p, shape, cx, cy, hw, hh, s, rot, roundness) {
   switch (shape) {

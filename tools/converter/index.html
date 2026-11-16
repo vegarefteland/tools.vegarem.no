@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image &amp; Video Converter — Tools</title>
+<title>Image &amp; Video Converter – Tools</title>
 <link rel="icon" href="/tools/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/tools/favicon-32-light.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)">
 <link rel="icon" href="/tools/favicon-32-dark.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)">
@@ -288,7 +288,7 @@
 <div class="wrap">
   <div class="page-head">
     <h1>Image &amp; Video Converter</h1>
-    <p>Batch-convert images with canvas, compress or convert video with ffmpeg — all in-browser, nothing uploaded anywhere.</p>
+    <p>Batch-convert images with canvas, compress or convert video with ffmpeg, all in-browser, nothing uploaded anywhere.</p>
   </div>
 
   <div class="tabs">
@@ -301,7 +301,7 @@
     <div id="imgDropZone" class="drop-zone">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       <p>Drop images here, or click to browse</p>
-      <p class="hint">jpg, png, webp, gif, bmp, svg, avif, heic/heif, tiff, ico — batch supported</p>
+      <p class="hint">jpg, png, webp, gif, bmp, svg, avif, heic/heif, tiff, ico, batch supported</p>
     </div>
     <input type="file" id="imgFileInput" multiple accept="image/*,.heic,.heif,.tif,.tiff,.svg,.ico,.avif">
 
@@ -346,7 +346,7 @@
     </div>
 
     <div class="file-list" id="imgFileList"></div>
-    <div class="empty-hint" id="imgEmptyHint">Nothing here yet — drop some images above.</div>
+    <div class="empty-hint" id="imgEmptyHint">Nothing here yet, drop some images above.</div>
   </div>
 
   <!-- ============================ VIDEO PANEL ============================ -->
@@ -356,7 +356,7 @@
     <div id="vidDropZone" class="drop-zone">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
       <p>Drop video here, or click to browse</p>
-      <p class="hint">mp4, mov, webm, avi, mkv, flv, wmv, 3gp, mpeg/mpg, m4v — queue supported</p>
+      <p class="hint">mp4, mov, webm, avi, mkv, flv, wmv, 3gp, mpeg/mpg, m4v, queue supported</p>
     </div>
     <input type="file" id="vidFileInput" multiple accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska,video/x-flv,video/x-ms-wmv,video/3gpp,video/mpeg,.mkv,.flv,.wmv,.3gp,.mpg,.mpeg,.m4v">
 
@@ -370,7 +370,7 @@
         </select>
       </div>
       <div class="field grow" id="vidCrfField">
-        <label>Quality — CRF <span class="val" id="vidCrfVal">24</span></label>
+        <label>Quality (CRF) <span class="val" id="vidCrfVal">24</span></label>
         <input type="range" id="vidCrf" min="18" max="35" value="24">
       </div>
       <div class="field" id="vidPresetField">
@@ -411,7 +411,7 @@
     </div>
 
     <div class="file-list" id="vidFileList"></div>
-    <div class="empty-hint" id="vidEmptyHint">Nothing here yet — drop a video above.</div>
+    <div class="empty-hint" id="vidEmptyHint">Nothing here yet, drop a video above.</div>
   </div>
 </div>
 
@@ -420,7 +420,7 @@
 <script type="module">
 // Isolated on purpose: this is the only part of the page that needs an ES
 // module (ffmpeg.wasm's worker requires it). If this fails to load in some
-// browser/context, only the video tab breaks — everything else below runs
+// browser/context, only the video tab breaks, everything else below runs
 // as a plain classic script regardless.
 import { FFmpeg } from "../vendor/ffmpeg/index.js";
 import { fetchFile } from "../vendor/util/index.js";
@@ -471,14 +471,14 @@ function showToast(msg, ms = 2400) {
 }
 
 function fmtSize(bytes) {
-  if (!bytes && bytes !== 0) return "—";
+  if (!bytes && bytes !== 0) return "–";
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
 /* ================================================================
- * MINIMAL ZIP WRITER (store method — no external deps)
+ * MINIMAL ZIP WRITER (store method, no external deps)
  * ================================================================ */
 let crc32Table = null;
 function crc32(buf) {
@@ -859,7 +859,7 @@ async function convertOneImage(item) {
       const mime = format === "png" ? "image/png" : format === "jpg" ? "image/jpeg" : format === "avif" ? "image/avif" : "image/webp";
       blob = await new Promise(res => canvas.toBlob(res, mime, format === "png" ? undefined : quality));
       if (!blob) throw new Error(`This browser can't encode ${format.toUpperCase()}`);
-      if (blob.type && blob.type !== mime) throw new Error(`This browser can't encode ${format.toUpperCase()} — it silently substituted ${blob.type}`);
+      if (blob.type && blob.type !== mime) throw new Error(`This browser can't encode ${format.toUpperCase()}, it silently substituted ${blob.type}`);
     }
 
     const baseName = item.file.name.replace(/\.[^.]+$/, "");
@@ -1068,7 +1068,7 @@ async function getFFmpeg() {
   if (ffmpegInstance) return ffmpegInstance;
   if (ffmpegLoadingPromise) return ffmpegLoadingPromise;
   if (!window.__ffmpegModule) {
-    throw new Error("Video engine unavailable — this browser/context couldn't load the ES module the video tool needs. Reload the page, and try Chrome if the problem persists.");
+    throw new Error("Video engine unavailable: this browser/context couldn't load the ES module the video tool needs. Reload the page, and try Chrome if the problem persists.");
   }
   document.getElementById("engineNote").textContent = "Loading conversion engine… (first time only)";
   ffmpegLoadingPromise = (async () => {

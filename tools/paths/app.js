@@ -1,4 +1,4 @@
-/* Path View — draws outlines the way a type editor shows them: on-curve
+/* Path View, draws outlines the way a type editor shows them: on-curve
  * points, off-curve points, and the handles between them.
  * Parsing lives in font.js (fonts) and paths.js (SVG + analysis). */
 "use strict";
@@ -37,8 +37,8 @@ const note = (msg, err) => { const n = $("#srcNote"); n.textContent = msg || "";
 /* ================================================================ looks */
 // Every number that sets a size is in px at a 1000 px wide frame, so the
 // preview and an export of any width are the same picture at different scales.
-// A look is colour, shape and weight. What is on the page — the text, its
-// spacing, the frame and which guides are showing — belongs to the setting,
+// A look is colour, shape and weight. What is on the page, the text, its
+// spacing, the frame and which guides are showing, belongs to the setting,
 // so picking a look never switches a guide off and picking a setting never
 // recolours anything.
 const LOOK_KEYS = ["bg", "transparent", "fillOn", "fillColour", "fillOpacity", "outlineOn", "outlineColour",
@@ -101,7 +101,7 @@ const SETTINGS = [
   { name: "Pair", tip: "Upper and lower case side by side", v: { text: "Aa", aspect: "4:5", pointScale: 0.75 } },
   { name: "Word", tip: "A spacing test word across a wide frame",
     v: { text: "Hamburgefonstiv", aspect: "16:9", pad: 7, pointScale: 0.32 } },
-  { name: "Spacing", tip: "Control strings with advance widths — sidebearings at a glance",
+  { name: "Spacing", tip: "Control strings with advance widths, sidebearings at a glance",
     v: { text: "nnonoonnhnh\nHHOHOOHHIHI", aspect: "16:9", pad: 7, pointScale: 0.28, lineHeight: 1.1,
          advanceOn: true } },
   { name: "Kerning", tip: "Classic kerning pairs, with each adjustment measured underneath",
@@ -118,7 +118,7 @@ const SETTINGS = [
     v: { text: "Ag", aspect: "3:4", pad: 16, pointScale: 0.85 } },
   { name: "Story", tip: "One glyph on a 9:16 frame for a story or reel",
     v: { text: "g", aspect: "9:16", pad: 16, pointScale: 1.05 } },
-  { name: "Outline only", tip: "Shape without points — for comparing silhouettes",
+  { name: "Outline only", tip: "Shape without points, for comparing silhouettes",
     v: { text: "a", pointsOn: false } },
 ];
 
@@ -143,7 +143,7 @@ function applySetting(p) {
   SETTING_KEYS.forEach(k => { S[k] = SETTING_DEFAULTS[k]; });
   Object.assign(S, p.v);
   activeSetting = p.name; store("studio-paths-setting", p.name);
-  if (S.src === "type" && !font) note("Load a font to see this setting's text — the demo shape stands in until then.");
+  if (S.src === "type" && !font) note("Load a font to see this setting's text; the logo stands in until then.");
   fitView(); syncUI(); draw(); persist();
 }
 
@@ -364,7 +364,7 @@ $("#savePreset").addEventListener("click", () => {
 });
 $("#presetName").addEventListener("keydown", e => { if (e.key === "Enter") $("#savePreset").click(); });
 
-// A random character the font actually draws — skipping spaces, controls and
+// A random character the font actually draws, skipping spaces, controls and
 // anything that maps to an empty glyph.
 function randomGlyph() {
   if (!font) return toast("Load a font first");
@@ -403,17 +403,24 @@ function syncUI() {
 let font = null, fontLabel = "";
 let svgArt = null, svgLabel = "";
 
-// A small original mark — a drop with a counter — so the view has something to
-// show before a font is loaded. Simple on purpose: smooth points, one corner,
-// paired handles. The counter runs the other way round so it stays open when filled.
-const DEMO = "M 500 100 C 720 100 880 300 880 520 C 880 740 710 900 500 900 " +
-  "C 290 900 120 740 120 520 C 120 330 260 210 400 160 L 500 100 Z " +
-  "M 500 380 C 390 380 310 460 310 560 C 310 660 390 740 500 740 " +
-  "C 610 740 690 660 690 560 C 690 460 610 380 500 380 Z";
+// The preview before a font or SVG is loaded: the vegarem.no logo
+// (Graphic Design/ny logo.svg). Run through the same importer as a dropped
+// SVG, so the rect's rounded corners and the circle show their real points.
+const DEMO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841.89 595.28">' +
+  '<path d="M296.51,161.83H94.39c-18.6,0-30.87,19.35-22.94,36.17l101.06,214.39c9.14,19.39,36.73,19.39,45.87,0l101.07-214.39c7.93-16.82-4.34-36.17-22.94-36.17Z"/>' +
+  '<path d="M474.87,161.95h-96.99v.02c-9.29-.12-18.62,4.72-23.25,14.52l-101.08,214.27c-7.94,16.82,4.33,36.18,22.93,36.18h202.14c13.89,0,24.24-10.8,25.29-23.27.47-2.1.74-4.28.74-6.52v-205.4h0c0-16.46-13.34-29.79-29.79-29.79Z"/>' +
+  '<rect x="527.19" y="162.16" width="252.94" height="264.98" rx="29.79" ry="29.79"/>' +
+  '<circle cx="102.19" cy="393.74" r="33.19"/>' +
+  '</svg>';
+let demoContours = null;
+const demoGlyphs = () => {
+  if (!demoContours) demoContours = parseSVG(DEMO_SVG).contours;
+  return [{ contours: demoContours, x: 0, ch: "", advance: 0, y: 0 }];
+};
 
 function currentArt() {
   if (S.src === "type") {
-    if (!font) return { demo: true, glyphs: [{ contours: parsePathData(DEMO), x: 0, ch: "", advance: 0, y: 0 }] };
+    if (!font) return { demo: true, glyphs: demoGlyphs() };
     const lines = String(S.text || "").split("\n");
     const upm = font.unitsPerEm;
     const glyphs = [];
@@ -438,7 +445,7 @@ function currentArt() {
     });
     return { glyphs, lines: lines.length, kernPairs };
   }
-  if (!svgArt) return { demo: true, glyphs: [{ contours: parsePathData(DEMO), x: 0, ch: "", advance: 0, y: 0 }] };
+  if (!svgArt) return { demo: true, glyphs: demoGlyphs() };
   return { glyphs: [{ contours: svgArt.contours, x: 0, y: 0, ch: "", advance: 0 }] };
 }
 
@@ -470,7 +477,7 @@ $("#fontInput").addEventListener("change", async e => {
 let localFonts = [];
 $("#localBtn").addEventListener("click", async () => {
   if (!window.queryLocalFonts) {
-    note("Your browser can't list installed fonts — Chrome and Edge can. Use Load font file instead.", true);
+    note("Your browser can't list installed fonts, Chrome and Edge can. Use Load font file instead.", true);
     return;
   }
   try {
@@ -655,8 +662,7 @@ function analysisOpts(art) {
   return { tol: Math.max(b.w, b.h) * 0.0005, convention: "ps" };
 }
 
-// Direction is judged within each glyph. Neighbouring letters can touch —
-// serifs meet, and no kerning is applied — and a test point landing in the next
+// Direction is judged within each glyph. Neighbouring letters can touch, // serifs meet, and no kerning is applied, and a test point landing in the next
 // letter would otherwise count as a nested counter and flag a correct contour.
 function glyphDirections(art, convention) {
   const out = [];
@@ -679,7 +685,7 @@ function frameSize(availW, availH, b) {
 }
 
 // Draws everything into `P` for a frame of size W×H. `view` adds zoom and pan
-// on top of the fitted framing — the export always uses the plain fit.
+// on top of the fitted framing, the export always uses the plain fit.
 function paintScene(P, W, H, art, view, opts) {
   opts = opts || {};
   const b = artBounds(art);
@@ -994,7 +1000,7 @@ function drawStats(art) {
   const opts = analysisOpts(art);
   const a = analysePaths(all, opts);
   a.reversed = glyphDirections(art, opts.convention).filter(d => d.wrong).length;
-  const src = S.src === "type" ? (font ? esc(font.name) : "demo shape — load a font") : (svgArt ? esc(svgLabel) : "demo shape — load an SVG");
+  const src = S.src === "type" ? (font ? esc(font.name) : "logo, load a font") : (svgArt ? esc(svgLabel) : "logo, load an SVG");
   const cells = [
     ["Source", src],
     ["Contours", a.contours],

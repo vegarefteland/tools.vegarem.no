@@ -1,5 +1,5 @@
 /* ================================================================
-   Studio — shared design system, part 1 of 2: tokens, base, nav.
+   Studio, shared design system, part 1 of 2: tokens, base, nav.
 
    Mirrors vegarem.no exactly (index.html <style>, "Tokens"). When the
    site changes, change it here first: every tool and the hub read these
@@ -9,7 +9,7 @@
    The full written spec is "Design Guidelines.pdf" in the Studio folder.
    ================================================================ */
 
-/* Geist, self-hosted — the same variable file the site ships (v1.7.2,
+/* Geist, self-hosted, the same variable file the site ships (v1.7.2,
    100–900 in one 68 KB file). Licence in tools/vendor/fonts/. */
 @font-face {
   font-family: 'Geist';
@@ -46,11 +46,11 @@
   --theme-transition: 420ms ease;
   --glass:        blur(22px) saturate(1.6);
 
-  /* ── Tool extensions — what a tool needs that a portfolio doesn't ─ */
+  /* ── Tool extensions, what a tool needs that a portfolio doesn't ─ */
   --pill-ink:       var(--nav-fg);
   --pill-ink-quiet: color-mix(in srgb, var(--pill-ink) 58%, transparent);
   --surface:      #f5f5f5;                 /* panels: flat tone, no outline */
-  --tone:         rgba(0, 0, 0, 0.055);    /* buttons, fields, tracks — on any surface */
+  --tone:         rgba(0, 0, 0, 0.055);    /* buttons, fields, tracks, on any surface */
   --tone-strong:  rgba(0, 0, 0, 0.11);
   --track:        rgba(10, 10, 10, 0.18);  /* slider rails, dividers on tone */
   --panel-radius: 16px;                    /* the site's info panel */
@@ -60,7 +60,7 @@
   --danger:       #d9534f;
 
   /* Compat: names older tool CSS still reads. Shadows are gone on the
-     site — surfaces read by tone alone — so the hover shadow is nothing. */
+     site, surfaces read by tone alone, so the hover shadow is nothing. */
   --radius:       var(--r-pill);
   --hover-shadow: 0 0 0 transparent;
 }
@@ -117,7 +117,7 @@ button, input, select, textarea { font-family: inherit; letter-spacing: inherit;
   *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
 
-/* ─── Nav — the site's top bar ──────────────────────────────────
+/* ─── Nav, the site's top bar ──────────────────────────────────
    One 42px glass bar, 16px from the edges; the glass is drawn by
    ::before so whatever sits inside stays clear. Markup every tool uses:
 
@@ -128,8 +128,7 @@ button, input, select, textarea { font-family: inherit; letter-spacing: inherit;
      </div>
 
    The pill reads as a breadcrumb: "Studio" (quiet, the way home) then the
-   current tool at full ink. Other tool links in the markup are hidden —
-   the hub is where you switch tools. A tool may put its own actions in
+   current tool at full ink. Other tool links in the markup are hidden, the hub is where you switch tools. A tool may put its own actions in
    .nav-actions, so there is only ever ONE bar on screen. */
 .hub-nav {
   position: fixed;

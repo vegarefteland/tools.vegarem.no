@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Project Layout — Tools</title>
+<title>Project Layout – Tools</title>
 <link rel="icon" href="/tools/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/tools/favicon-32-light.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)">
 <link rel="icon" href="/tools/favicon-32-dark.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)">
@@ -50,7 +50,7 @@
   .drop-zone-btns { display: flex; gap: 6px; }
   input[type="file"] { display: none; }
 
-  /* ─── Canvas — rows as the site stacks them ───────────────────── */
+  /* ─── Canvas, rows as the site stacks them ───────────────────── */
   .layout-area { max-width: var(--preview-max-width); margin: 18px auto 80px; padding: 0 24px; position: relative; }
 
   .row { display: grid; gap: var(--gap); margin-bottom: var(--gap); position: relative; }
@@ -83,7 +83,7 @@
   .row.is-book { background: #000; border-radius: var(--media-radius); padding: 6px; gap: 6px; }
   .row.is-book .img-cell { border-radius: 4px; }
 
-  /* Pills on media — the site's card pills: glass, 24px here (editor scale). */
+  /* Pills on media, the site's card pills: glass, 24px here (editor scale). */
   .chip {
     position: absolute; z-index: 3; display: inline-flex; align-items: center; gap: 5px;
     height: 24px; padding: 0 9px; border-radius: 8px; font-size: 11.5px; white-space: nowrap;
@@ -110,7 +110,7 @@
   .cell-btn.on { background: var(--fg); color: var(--bg); }
   .cell-btn svg { width: 13px; height: 13px; }
 
-  /* Row tools — a column of buttons in the left gutter, on hover. */
+  /* Row tools, a column of buttons in the left gutter, on hover. */
   .row-tools {
     position: absolute; left: -46px; top: 0; display: flex; flex-direction: column; gap: 4px;
     opacity: 0; transition: opacity 150ms; z-index: 5;
@@ -129,7 +129,7 @@
 
   .canvas-legend { max-width: var(--preview-max-width); margin: 10px auto 0; padding: 0 24px; font-size: 12px; color: var(--muted); line-height: 1.6; }
 
-  /* ─── Export panel — a floating panel, the site's info-panel ──── */
+  /* ─── Export panel, a floating panel, the site's info-panel ──── */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 190; opacity: 0; pointer-events: none; transition: opacity 300ms; }
   .overlay.open { opacity: 1; pointer-events: auto; }
 
@@ -159,7 +159,7 @@
   .export-footer .btn { flex: 1; justify-content: center; }
   .site-fill { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
 
-  /* Cover — previewed as the actual home-page card (3:2, label, arrow, keywords) */
+  /* Cover: previewed as the actual home-page card (3:2, label, arrow, keywords) */
   .cover-section { display: flex; flex-direction: column; gap: 8px; }
   .cover-section-header { display: flex; align-items: center; justify-content: space-between; }
   .cover-section-header .btns { display: flex; gap: 4px; }
@@ -293,7 +293,7 @@
   .lightbox img, .lightbox video { max-width: min(90vw, 1000px); max-height: 88vh; border-radius: var(--media-radius); }
 
   /* ════════════════════════════════════════════════════════════════
-     SITE PREVIEW — a copy of vegarem.no's project page CSS (v3.2),
+     SITE PREVIEW, a copy of vegarem.no's project page CSS (v3.2),
      scoped under .sp-root. Values are the site's, not Studio's: the
      preview must look like the site even if Studio is restyled.
      ════════════════════════════════════════════════════════════════ */
@@ -311,7 +311,7 @@
   }
   .sp-root.open { display: flex; }
 
-  /* Studio's own toolbar above the mimic — tool tokens, not site ones. */
+  /* Studio's own toolbar above the mimic, tool tokens, not site ones. */
   .sp-toolbar {
     flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 10px 12px 10px 20px; background: var(--studio-bar, #151515); color: #efefef; letter-spacing: -0.012em;
@@ -396,7 +396,7 @@
   .sp-root .project-flush-group > .project-img-item:last-child,
   .sp-root .project-flush-group > .project-row-grid:last-child > .project-img-item:last-child { border-bottom-right-radius: var(--media-radius); }
 
-  /* mat: true — every side-by-side image on an identical 4:5 tile */
+  /* mat: true, every side-by-side image on an identical 4:5 tile */
   .sp-root.sp-matted .project-row-grid { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: 1fr; }
   .sp-root.sp-matted .project-row-grid > .project-img-item { aspect-ratio: 4 / 5; background: var(--mat); padding: 9% 7%; }
   .sp-root.sp-matted .project-row-grid > .project-img-item img { position: relative; width: 100%; height: 100%; object-fit: contain; }
@@ -405,7 +405,7 @@
     filter: blur(40px) saturate(1.3); transform: scale(1.35); opacity: 0.25; pointer-events: none;
   }
 
-  /* Book — one page at a time on black, BOOK_SCALE 0.82, BOOK_CROP 0.09 */
+  /* Book, one page at a time on black, BOOK_SCALE 0.82, BOOK_CROP 0.09 */
   .sp-root .book { position: relative; background: #000; user-select: none; }
   .sp-root .book-stage { position: relative; width: 100%; overflow: hidden; }
   .sp-root .book-page { position: absolute; left: 50%; top: 50%; width: 82%; height: auto; max-width: none; transform: translate(-50%, -50%); opacity: 0; }
@@ -423,7 +423,7 @@
   .sp-root .book-count { position: absolute; bottom: var(--inset); left: 12px; z-index: 2; font-variant-numeric: tabular-nums; }
   .sp-root .book-auto { position: absolute; bottom: var(--inset); right: 12px; z-index: 2; }
 
-  /* *_player.mp4 — paused, centre play pill, poster */
+  /* *_player.mp4, paused, centre play pill, poster */
   .sp-root .video-wrap { position: relative; }
   .sp-root .video-play {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 64px; height: 64px; padding: 0; border: 0;
@@ -494,8 +494,7 @@
 <div id="dropZone" class="drop-zone">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
   <p>Drop files here, or a whole project folder</p>
-  <p class="hint">A folder like <code>images/projects/02</code> imports exactly as the site reads it —
-    numbered files, <code>NN/</code> rows, <code>NNA/</code> flush groups, <code>NN_book/</code> books,
+  <p class="hint">A folder like <code>images/projects/02</code> imports exactly as the site reads it, numbered files, <code>NN/</code> rows, <code>NNA/</code> flush groups, <code>NN_book/</code> books,
     <code>NN_player.mp4</code> sound clips with their posters, and the cover.</p>
   <div class="drop-zone-btns">
     <button class="btn" id="dzBrowseBtn">Browse files</button>
@@ -508,7 +507,7 @@
 
 <div class="layout-area" id="layoutArea"></div>
 
-<!-- Site Preview — a vegarem.no project page -->
+<!-- Site Preview, a vegarem.no project page -->
 <div class="sp-root sp-dark" id="sitePreview">
   <div class="sp-toolbar">
     <div><h2 style="display:inline">Site preview</h2><span class="sp-hint">The project page as vegarem.no renders it</span></div>
@@ -569,7 +568,7 @@
   <div class="export-body">
     <div class="cover-section">
       <div class="cover-section-header">
-        <span>Cover — the home-page card, 3:2</span>
+        <span>Cover: the home-page card, 3:2</span>
         <div class="btns">
           <button class="btn sm" id="coverUploadBtn">Upload</button>
           <button class="btn sm" id="coverFromFirstBtn">First image</button>
@@ -604,7 +603,7 @@
       <label>Description <span class="aside">blank line = paragraph, two = section</span></label>
       <div class="desc-tools">
         <button type="button" class="btn sm" id="descBoldBtn" style="font-weight:600" title="Bold selection (⌘B)">B</button>
-        <span>Select text and press B — or type **like this**</span>
+        <span>Select text and press B, or type **like this**</span>
       </div>
       <textarea class="desc-input" id="exportDesc" placeholder="What it is, who it was with, and the software used."></textarea>
     </div>
@@ -676,13 +675,13 @@
 
 <script>
 /* ================================================================
- * PROJECT LAYOUT — builds a vegarem.no project folder + content.js entry.
+ * PROJECT LAYOUT, builds a vegarem.no project folder + content.js entry.
  *
  * MODEL
- *   rows   = [row, row, …] — one per numbered slot, in page order.
+ *   rows   = [row, row, …], one per numbered slot, in page order.
  *   row    = array of items, plus two properties:
  *              row.kind  "row" (default) | "book" (NN_book/, one page at a time)
- *              row.group null | key — consecutive rows sharing a key form a
+ *              row.group null | key, consecutive rows sharing a key form a
  *                        flush group (NNA/ folder: no gaps, outer corners only)
  *   item   = { id, file, url, type: image|gif|video, naturalWidth/Height,
  *              sound (→ NN_player.mp4), posterFile/posterUrl }
@@ -692,7 +691,7 @@
  *   NN_player_poster.*   its still frame      NN/01.ext …     side-by-side row
  *   NN_book/01.ext …     book (images only)   NNA/ NNB/ …     flush group
  * Inside a flush group the same rules repeat (01, 02/, 03_book/ …).
- * A _player clip only counts as a single slot — never inside a row.
+ * A _player clip only counts as a single slot, never inside a row.
  * ================================================================ */
 let rows = [];
 let nextId = 0;
@@ -769,7 +768,7 @@ function nodes() {
 }
 
 /* ================================================================
- * PLAN — the one place numbering is decided. Used by the canvas labels,
+ * PLAN, the one place numbering is decided. Used by the canvas labels,
  * the snippet's file tree and the export, so they always agree.
  *   labels[rowIdx] = folder-relative base, e.g. "03", "02A/04"
  *   files          = [{ path, item } | { path, posterOf: item }]
@@ -814,7 +813,7 @@ function plan() {
 }
 
 /* ================================================================
- * UNDO / REDO — snapshots of structure (ids, kind, group, sound)
+ * UNDO / REDO, snapshots of structure (ids, kind, group, sound)
  * ================================================================ */
 let history = [[]];
 let histIdx = 0;
@@ -956,7 +955,7 @@ function handleFiles(files) {
 }
 
 /* ================================================================
- * PROJECT FOLDER IMPORT — reads a folder the way build-manifest.js does
+ * PROJECT FOLDER IMPORT, reads a folder the way build-manifest.js does
  * ================================================================ */
 const MEDIA = "webp|jpe?g|png|gif|mp4|mov";
 const IMG = "webp|jpe?g|png|gif";
@@ -1067,7 +1066,7 @@ async function importProject(entries, rootName) {
   if (sound) extras.push(sound + " sound clip" + (sound > 1 ? "s" : ""));
   if (coverFile) extras.push("cover");
   showToast(gapAt !== null
-    ? `Imported ${total} files — numbering gap before ${pad(gapAt)}: the site stops there`
+    ? `Imported ${total} files: numbering gap before ${pad(gapAt)}: the site stops there`
     : `Imported ${total} files` + (extras.length ? " · " + extras.join(", ") : ""), gapAt !== null ? 4500 : 2600);
 }
 
@@ -1165,7 +1164,7 @@ function mediaEl(item, opts = {}) {
 /* ================================================================
  * STRUCTURE ACTIONS
  * ================================================================ */
-// Join this row to the one above in a flush group — or, if it already
+// Join this row to the one above in a flush group, or, if it already
 // is, split the group here.
 function toggleLink(idx) {
   const r = rows[idx], above = rows[idx - 1];
@@ -1186,13 +1185,13 @@ function toggleBook(idx) {
   const r = rows[idx];
   if (r.kind === "book") r.kind = "row";
   else if (canBeBook(r)) r.kind = "book";
-  else { showToast("A book needs two or more images — no video"); return; }
+  else { showToast("A book needs two or more images, no video"); return; }
   commit();
 }
 function toggleSound(item) {
   item.sound = !item.sound;
   commit();
-  showToast(item.sound ? "Sound clip — exports as _player.mp4, loads paused with a play button" : "Silent loop — autoplays muted");
+  showToast(item.sound ? "Sound clip, exports as _player.mp4, loads paused with a play button" : "Silent loop, autoplays muted");
 }
 function removeImage(rowIdx, cellIdx) {
   rows[rowIdx].splice(cellIdx, 1);
@@ -1218,7 +1217,7 @@ function takeDragged(srcRow, srcIdx, targetRow) {
 }
 
 /* ================================================================
- * CANVAS RENDER — mirrors the site: stack, or a 2-col grid where every
+ * CANVAS RENDER, mirrors the site: stack, or a 2-col grid where every
  * top-level slot (row, group, book) is one cell, as renderFromManifest does.
  * ================================================================ */
 function render() {
@@ -1377,7 +1376,7 @@ layoutArea.addEventListener("dragover", e => { if (!dragItem) e.preventDefault()
 layoutArea.addEventListener("drop", e => { if (dragItem) return; e.preventDefault(); handleDropEvent(e); });
 
 /* ================================================================
- * COVER — 3:2, cropped resolution-independently as { cx, cy, zoom }
+ * COVER, 3:2, cropped resolution-independently as { cx, cy, zoom }
  * ================================================================ */
 const coverPreview = $id("coverPreview"), coverFileInput = $id("coverFileInput");
 
@@ -1602,10 +1601,10 @@ function generateSnippet() {
 }
 
 $id("copySnippetBtn").addEventListener("click", () => {
-  navigator.clipboard.writeText($id("snippetOutput").value).then(() => showToast("Copied — paste into SITE.projects in content.js"));
+  navigator.clipboard.writeText($id("snippetOutput").value).then(() => showToast("Copied, paste into SITE.projects in content.js"));
 });
 
-/* Fill from vegarem.no — reads the live content.js (GitHub Pages serves it
+/* Fill from vegarem.no, reads the live content.js (GitHub Pages serves it
    with open CORS) and loads the entry for this folder into the form. */
 $id("fillFromSiteBtn").addEventListener("click", async () => {
   const folder = $id("exportFolder").value.trim();
@@ -1625,7 +1624,7 @@ $id("fillFromSiteBtn").addEventListener("click", async () => {
     generateSnippet(); renderCoverPreview();
     showToast(`Loaded "${p.title}" from vegarem.no`);
   } catch (e) {
-    showToast("Couldn't reach vegarem.no — " + e.message, 3500);
+    showToast("Couldn't reach vegarem.no: " + e.message, 3500);
   }
 });
 
@@ -1664,10 +1663,10 @@ $id("downloadBtn").addEventListener("click", async () => {
   const folder = $id("exportFolder").value.trim() || "XX";
   if (!window.JSZip) {
     const script = document.createElement("script");
-    script.src = "/tools/vendor/jszip/jszip.min.js";   // bundled, v3.10.1 — no CDN
+    script.src = "/tools/vendor/jszip/jszip.min.js";   // bundled, v3.10.1, no CDN
     document.head.appendChild(script);
     await new Promise((res, rej) => { script.onload = res; script.onerror = rej; }).catch(() => {});
-    if (!window.JSZip) { showToast("Couldn’t load the ZIP library — try Save to folder"); return; }
+    if (!window.JSZip) { showToast("Couldn’t load the ZIP library, try Save to folder"); return; }
   }
   showToast("Building ZIP…");
   const zip = new window.JSZip();
@@ -1718,7 +1717,7 @@ function generateCroppedCover() {
 }
 
 /* ================================================================
- * SITE PREVIEW — rebuilds the page the way the site's
+ * SITE PREVIEW, rebuilds the page the way the site's
  * renderFromManifest() walks the manifest.
  * ================================================================ */
 function spItem(item, cls) {
@@ -1791,7 +1790,7 @@ function renderSitePreview() {
   tags.innerHTML = `<span class="section-tag">Description</span>` + (year ? `<span class="section-tag"></span>` : "") +
     `<span class="focus-btn">${ICON.focus}</span>`;
   if (year) tags.children[1].textContent = year;
-  $id("spDesc").innerHTML = buildDescHTML($id("exportDesc").value) || `<p class="sp-desc-empty">No description yet — add one in Export.</p>`;
+  $id("spDesc").innerHTML = buildDescHTML($id("exportDesc").value) || `<p class="sp-desc-empty">No description yet, add one in Export.</p>`;
   const kw = $id("spKeywords");
   kw.innerHTML = "";
   keys.forEach(k => { const s = document.createElement("span"); s.className = "section-tag"; s.textContent = k; kw.appendChild(s); });

@@ -1,4 +1,4 @@
-/* Gradient Generator — controls, seeding and export.
+/* Gradient Generator, controls, seeding and export.
  * Colour maths is in engine.js; the painting is in render.js. */
 "use strict";
 
@@ -264,11 +264,11 @@ $("#shuffleStops").addEventListener("click", () => {
 
 /* ================================================================ canvas */
 const SIZES = [
-  ["1080x1350", "1080 × 1350 — 4:5 post"], ["1080x1080", "1080 × 1080 — square"],
-  ["1080x1920", "1080 × 1920 — story"], ["1920x1080", "1920 × 1080 — HD"],
-  ["2560x1440", "2560 × 1440 — desktop"], ["3840x2160", "3840 × 2160 — 4K"],
-  ["1200x630", "1200 × 630 — link card"], ["1414x2000", "1414 × 2000 — A4 @150"],
-  ["2480x3508", "2480 × 3508 — A4 @300"], ["custom", "Custom…"],
+  ["1080x1350", "1080 × 1350 (4:5 post)"], ["1080x1080", "1080 × 1080 (square)"],
+  ["1080x1920", "1080 × 1920 (story)"], ["1920x1080", "1920 × 1080 (HD)"],
+  ["2560x1440", "2560 × 1440 (desktop)"], ["3840x2160", "3840 × 2160 (4K)"],
+  ["1200x630", "1200 × 630 (link card)"], ["1414x2000", "1414 × 2000 (A4 @150)"],
+  ["2480x3508", "2480 × 3508 (A4 @300)"], ["custom", "Custom…"],
 ];
 $("#sizePreset").innerHTML = SIZES.map(([v, l]) => '<option value="' + v + '">' + l + "</option>").join("");
 $("#sizePreset").addEventListener("change", e => {
@@ -423,7 +423,7 @@ function sync() {
   $("#labelColourCtl").classList.toggle("hidden", C.labelAuto);
   $("#exportNote").textContent = VECTOR_TYPES.includes(C.type)
     ? "SVG exports as real gradient stops."
-    : "SVG is an approximation for " + TYPE_LABELS[C.type].toLowerCase() + " — PNG keeps exactly what you see.";
+    : "SVG is an approximation for " + TYPE_LABELS[C.type].toLowerCase() + ", PNG keeps exactly what you see.";
   drawStops();
 }
 
@@ -449,7 +449,7 @@ $("#png2").addEventListener("click", () => exportRaster(2, "image/png"));
 $("#jpg").addEventListener("click", () => exportRaster(1, "image/jpeg", 0.92));
 $("#svg").addEventListener("click", () => {
   download(new Blob([svgGradient(C, C.w, C.h)], { type: "image/svg+xml" }), fileName("svg"));
-  toast(VECTOR_TYPES.includes(C.type) ? "SVG saved" : "SVG saved — approximate for this type");
+  toast(VECTOR_TYPES.includes(C.type) ? "SVG saved" : "SVG saved, approximate for this type");
 });
 async function copy(text, what) {
   try { await navigator.clipboard.writeText(text); toast(what + " copied"); }

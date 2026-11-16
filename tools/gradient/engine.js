@@ -1,8 +1,8 @@
-/* Gradient Generator — colour, palettes and the renderers.
+/* Gradient Generator, colour, palettes and the renderers.
  *
  * Everything interpolates in OKLab by default. Blending two colours in plain
- * sRGB drags the mix through a dead grey band — the classic muddy middle of a
- * blue-to-orange fade — because sRGB is not perceptually even. OKLab is, so the
+ * sRGB drags the mix through a dead grey band, the classic muddy middle of a
+ * blue-to-orange fade, because sRGB is not perceptually even. OKLab is, so the
  * ramp keeps its chroma and the midpoint lands where the eye expects it.
  *
  * Nothing here touches the DOM at load time, so the maths runs under Node too.
@@ -83,11 +83,11 @@ function hslToRgb(hsl) {
 
 const SPACES = ["oklab", "oklch", "srgb", "linear", "hsl"];
 const SPACE_LABELS = {
-  oklab: "OKLab — even, keeps chroma",
-  oklch: "OKLCH — travels round the wheel",
-  srgb: "sRGB — the muddy classic",
-  linear: "Linear RGB — light-accurate",
-  hsl: "HSL — rainbow-ish",
+  oklab: "OKLab (even, keeps chroma)",
+  oklch: "OKLCH (travels round the wheel)",
+  srgb: "sRGB (the muddy classic)",
+  linear: "Linear RGB (light-accurate)",
+  hsl: "HSL (rainbow-ish)",
 };
 
 // Mix two colours at t in the chosen space.
@@ -131,7 +131,7 @@ const EASING_LABELS = {
 
 /* --------------------------------------------------------------- the ramp */
 
-// stops: [{ pos: 0..1, hex }] — returns a function t -> [r,g,b]
+// stops: [{ pos: 0..1, hex }], returns a function t -> [r,g,b]
 function makeRamp(stops, space, easing, bias) {
   const list = stops.slice().sort((a, b) => a.pos - b.pos)
     .map(s => ({ pos: clamp01(s.pos), rgb: hexToRgb(s.hex) }));
@@ -153,7 +153,7 @@ function makeRamp(stops, space, easing, bias) {
   };
 }
 
-// Sample a ramp into canvas colour stops — this is how OKLab mixing survives
+// Sample a ramp into canvas colour stops, this is how OKLab mixing survives
 // being handed to a native CanvasGradient, which only knows sRGB.
 function applyStops(grad, ramp, n) {
   n = n || 48;
@@ -263,9 +263,9 @@ const paletteColours = p => p[2].trim().split(/\s+/);
 
 const HARMONIES = ["analogous", "complementary", "triad", "split", "mono", "wander"];
 const HARMONY_LABELS = {
-  analogous: "Analogous — neighbours", complementary: "Complementary — opposites",
-  triad: "Triad — three-way", split: "Split complementary", mono: "Monochrome — one hue",
-  wander: "Wander — drifting hue",
+  analogous: "Analogous (neighbours)", complementary: "Complementary (opposites)",
+  triad: "Triad (three-way)", split: "Split complementary", mono: "Monochrome (one hue)",
+  wander: "Wander (drifting hue)",
 };
 
 // Build a palette from a seed in OKLCH, so lightness steps are even and the

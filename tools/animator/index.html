@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Animator — Tools</title>
+<title>Animator – Tools</title>
 <link rel="icon" href="/tools/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/tools/favicon-32-light.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)">
 <link rel="icon" href="/tools/favicon-32-dark.png" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)">
@@ -245,7 +245,7 @@
 
     <div class="preset-group-head">
       <span class="preset-group-label">Multiple Images</span>
-      <span class="preset-group-note" id="multiNote">transitions between images — needs 2+</span>
+      <span class="preset-group-note" id="multiNote">transitions between images, needs 2+</span>
     </div>
     <div class="preset-grid" id="presetGridMulti"></div>
   </div>
@@ -306,7 +306,7 @@
 <script type="module">
 // Isolated on purpose: only this tiny block needs an ES module (ffmpeg.wasm's
 // worker requires it). Shares the vendored engine in tools/vendor instead of
-// duplicating ~31MB. If this fails, only export breaks — everything else below
+// duplicating ~31MB. If this fails, only export breaks, everything else below
 // runs as a plain classic script.
 import { FFmpeg } from "../vendor/ffmpeg/index.js";
 import { fetchFile } from "../vendor/util/index.js";
@@ -349,7 +349,7 @@ function showToast(msg, ms = 2400) {
  * EASING
  * Portfolio/editorial motion favours long sine & cubic ease-in-out for
  * ambient movement, with snappy curves reserved for the transition itself.
- * easeOutBack overshoots past 1 by design — callers must clamp.
+ * easeOutBack overshoots past 1 by design, callers must clamp.
  * ================================================================ */
 const Easing = {
   linear: t => t,
@@ -479,7 +479,7 @@ function drawCover(ctx, bmp, canvasW, canvasH, scale, panX, panY) {
   ctx.drawImage(bmp, dx, dy, drawW, drawH);
 }
 
-// A cover-drawn image on its own pooled layer — the building block for
+// A cover-drawn image on its own pooled layer, the building block for
 // every effect that needs to transform or composite a whole frame.
 function imageLayer(key, bmp, w, h, scale = 1, panX = 0, panY = 0) {
   const { c, ctx } = scratch(key, w, h);
@@ -499,7 +499,7 @@ function resetCtxState(ctx, w, h) {
 
 // Additive RGB recomposition: max/sum of an R-only, G-only and B-only copy
 // reproduces the original exactly at zero offset, and splits into coloured
-// fringes as the offset grows — real chromatic aberration, not a hue trick.
+// fringes as the offset grows, real chromatic aberration, not a hue trick.
 function drawRgbSplit(ctx, bmp, w, h, offset, angle) {
   const dx = Math.cos(angle) * offset, dy = Math.sin(angle) * offset;
   const chans = [["#ff0000", -dx, -dy], ["#00ff00", 0, 0], ["#0000ff", dx, dy]];
@@ -549,7 +549,7 @@ function drawWaveDistort(ctx, src, w, h, amp, freq, phase, bleed = 0) {
 
 // A cover layer with `bleed` extra pixels of real image on every side.
 // The framing must stay identical to a plain drawCover(w, h) or the frame
-// visibly pops whenever a preset switches between the two paths — so the
+// visibly pops whenever a preset switches between the two paths, so the
 // image is cover-fitted to (w, h) and only then zoomed just enough to fill
 // the margin, rather than being cover-fitted to the larger canvas.
 function bleedZoom(w, h, bleed) { return 1 + (2 * bleed) / Math.min(w, h); }
@@ -632,7 +632,7 @@ const DIRS_4 = [["left", "Left"], ["right", "Right"], ["up", "Up"], ["down", "Do
  * Each preset declares its own params and render function; every piece
  * of UI (cards, sliders, readouts) is generated from this list, so a new
  * preset is one entry here and nothing else.
- *   render(ctx, w, h, t, p) — t is normalised loop progress 0..1.
+ *   render(ctx, w, h, t, p), t is normalised loop progress 0..1.
  *   All presets are periodic by construction: single-image ones yoyo,
  *   multi-image ones wrap through cycleState.
  * ================================================================ */
@@ -794,7 +794,7 @@ const PRESETS = [
       order: S("Order", [["forward", "Forward loop"], ["pingpong", "Ping-pong"]], "forward"),
     },
     // Ping-pong walks out and back without repeating the end frames, so a
-    // 3-image set is A B C B — 2n-2 steps, still a clean wrap to A.
+    // 3-image set is A B C B, 2n-2 steps, still a clean wrap to A.
     loop: (p, n) => (p.order === "pingpong" && n > 2 ? 2 * n - 2 : n) / p.fps,
     render(ctx, w, h, t, p) {
       const n = images.length;
@@ -974,8 +974,7 @@ const PRESETS = [
           if (p.order === "diagonal") delay = (c + r) / total;
           else if (p.order === "ltr") delay = c / cols;
           else {
-            // Deterministic hash so the scatter is identical every render —
-            // preview and exported frames must agree.
+            // Deterministic hash so the scatter is identical every render, // preview and exported frames must agree.
             const hsh = Math.sin(r * 127.1 + c * 311.7) * 43758.5453;
             delay = hsh - Math.floor(hsh);
           }
@@ -1142,7 +1141,7 @@ const PRESETS = [
       const { idx, next, progress } = cycleState(t, p.hold, p.trans);
       // Layers carry a margin of `bleed` so a strip displaced by up to
       // `amp` still has real pixels under it instead of a transparent gap.
-      // Every frame — holds included — goes through this same path so the
+      // Every frame, holds included, goes through this same path so the
       // slight bleed zoom never changes mid-loop.
       const bleed = Math.ceil(p.amp) + 2;
       const a = bleedLayer("wv_a", images[idx], w, h, bleed);
@@ -1229,7 +1228,7 @@ const PRESET_BY_ID = Object.fromEntries(PRESETS.map(p => [p.id, p]));
 const MULTI_IDS = PRESETS.filter(p => p.group === "multi").map(p => p.id);
 
 /* ================================================================
- * FILM LOOK — stackable overlays applied on top of any preset.
+ * FILM LOOK, stackable overlays applied on top of any preset.
  * Research: agencies layer grain / vignette / leaks over the base
  * transition for cohesion rather than treating them as separate effects.
  * ================================================================ */
@@ -1303,7 +1302,7 @@ function applyLook(ctx, w, h, t) {
 
   if (lookState.rounded.on) {
     const Rd = lookState.rounded;
-    // Punch out the corners, then paint the backdrop behind — leaving them
+    // Punch out the corners, then paint the backdrop behind, leaving them
     // transparent would come out black in an mp4.
     ctx.save();
     ctx.globalCompositeOperation = "destination-in";
@@ -1476,7 +1475,7 @@ function updatePresetAvailability() {
   });
   document.getElementById("multiNote").textContent = multiOk
     ? "transitions between images"
-    : "transitions between images — add a 2nd image to unlock";
+    : "transitions between images, add a 2nd image to unlock";
   if (!multiOk && MULTI_IDS.includes(activePreset)) selectPreset("kenburns");
 }
 
@@ -1517,7 +1516,7 @@ function getCanvasSize() {
     const r = ratios[frame.aspect] || [1, 1];
     w = r[0]; h = r[1];
   }
-  // H.264/VP9 reject odd dimensions — round both to even.
+  // H.264/VP9 reject odd dimensions, round both to even.
   let ew = Math.max(2, Math.round(frame.width / 2) * 2);
   let eh = Math.max(2, Math.round(ew * (h / w) / 2) * 2);
   return { w: ew, h: eh };
@@ -1560,7 +1559,7 @@ function resetCtxState_keep(ctx) {
 }
 
 /* ================================================================
- * LIVE PREVIEW — rAF for smoothness, with a setInterval fallback so the
+ * LIVE PREVIEW, rAF for smoothness, with a setInterval fallback so the
  * preview can never fully stall if rAF is throttled or suspended.
  * ================================================================ */
 let previewStart = performance.now();

@@ -1,4 +1,4 @@
-/* Path View — SVG path parsing and curve analysis.
+/* Path View, SVG path parsing and curve analysis.
  *
  * Both inputs (a font glyph and an uploaded SVG) end up in the same shape:
  *   contour = { start: [x,y], segs: [ {type, c|c1,c2, to} ], closed }
@@ -29,7 +29,7 @@ function parsePathData(d) {
     let i = 0;
     const take = n => nums.slice(i, i + n);
     if (up === "Z") {
-      // only draw the closing line if the path is not already home — otherwise
+      // only draw the closing line if the path is not already home, otherwise
       // a path that returns explicitly gets a zero-length segment and a
       // duplicate node sitting on its start
       if (cur) {
@@ -185,7 +185,16 @@ function shapeToPath(el) {
   const f = a => parseFloat(el.getAttribute(a) || 0);
   if (n === "rect") {
     const x = f("x"), y = f("y"), w = f("width"), h = f("height");
-    return "M" + x + "," + y + "h" + w + "v" + h + "h" + (-w) + "Z";
+    // Rounded corners, per the SVG spec: a missing radius copies the other,
+    // and each is clamped to half the side.
+    let rx = el.hasAttribute("rx") ? f("rx") : NaN, ry = el.hasAttribute("ry") ? f("ry") : NaN;
+    if (isNaN(rx)) rx = isNaN(ry) ? 0 : ry;
+    if (isNaN(ry)) ry = rx;
+    rx = Math.min(Math.max(rx, 0), w / 2); ry = Math.min(Math.max(ry, 0), h / 2);
+    if (!rx || !ry) return "M" + x + "," + y + "h" + w + "v" + h + "h" + (-w) + "Z";
+    const a = (dx, dy) => "a" + rx + "," + ry + " 0 0 1 " + dx + "," + dy;
+    return "M" + (x + rx) + "," + y + "h" + (w - 2 * rx) + a(rx, ry) + "v" + (h - 2 * ry) + a(-rx, ry) +
+           "h" + (-(w - 2 * rx)) + a(-rx, -ry) + "v" + (-(h - 2 * ry)) + a(rx, -ry) + "Z";
   }
   if (n === "circle" || n === "ellipse") {
     const cx = f("cx"), cy = f("cy");
@@ -251,7 +260,7 @@ const cubeAt = (p0, p1, p2, p3, t) => {
 };
 const quadAt = (p0, p1, p2, t) => { const u = 1 - t; return u * u * p0 + 2 * u * t * p1 + t * t * p2; };
 
-// Where a curve runs horizontal or vertical part-way along — the place a type
+// Where a curve runs horizontal or vertical part-way along, the place a type
 // designer puts an on-curve point. `tol` absorbs integer rounding: a critical
 // point within `tol` of one of the segment's own end coordinates is the end
 // point doing the job, not a missing extreme.
@@ -293,7 +302,7 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const EPS = 1e-6;
 
 // The direction a segment leaves its start in: toward its first control point,
-// or — when that handle is retracted onto the node — the next point along.
+// or, when that handle is retracted onto the node, the next point along.
 function leaveDir(from, s) {
   const pts = s.type === "cubic" ? [s.c1, s.c2, s.to] : s.type === "quad" ? [s.c, s.to] : [s.to];
   for (const p of pts) if (dist(p, from) > EPS) return { dx: p[0] - from[0], dy: p[1] - from[1], len: dist(p, from) };
@@ -307,8 +316,8 @@ function arriveDir(from, s) {
 }
 
 // Walk a contour into on-curve nodes, each with the handles either side.
-// A node is smooth when the path is tangent-continuous through it — which is
-// how Glyphs treats it — so a straight line flowing into a curve along the
+// A node is smooth when the path is tangent-continuous through it, which is
+// how Glyphs treats it, so a straight line flowing into a curve along the
 // same direction counts, not only a node with two collinear handles.
 function contourNodes(c) {
   const segs = c.segs, n = segs.length;

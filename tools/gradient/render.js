@@ -1,4 +1,4 @@
-/* Gradient Generator — the renderers and the finishing passes.
+/* Gradient Generator, the renderers and the finishing passes.
  *
  * Every renderer takes (ctx, w, h, cfg) and paints the whole frame. Resolution
  * is the caller's business: the preview draws small and the export draws big
@@ -97,7 +97,7 @@ function drawHorizon(ctx, w, h, cfg, ramp) {
   }
 }
 
-// Hard stripes with a soft falloff inside each — the poster look.
+// Hard stripes with a soft falloff inside each, the poster look.
 function drawBands(ctx, w, h, cfg, ramp) {
   const n = Math.max(2, Math.round(cfg.bands));
   const a = (cfg.angle || 0) * Math.PI / 180;
@@ -125,7 +125,7 @@ function drawBands(ctx, w, h, cfg, ramp) {
 }
 
 // Mesh: colour points pulling on every pixel, weighted by distance. Computed
-// small and scaled up — it is all low frequency, and a full-size per-pixel pass
+// small and scaled up, it is all low frequency, and a full-size per-pixel pass
 // would cost a second per frame for no visible gain.
 function meshPoints(cfg) {
   const r = rng(cfg.seed + "|mesh");
@@ -172,7 +172,7 @@ function drawMesh(ctx, w, h, cfg, ramp) {
   ctx.restore();
 }
 
-// Fluid: the ramp read through warped noise — the marbled, poured look.
+// Fluid: the ramp read through warped noise, the marbled, poured look.
 function drawFluid(ctx, w, h, cfg, ramp) {
   const scale = Math.min(1, 420 / Math.max(w, h));
   const bw = Math.max(8, Math.round(w * scale)), bh = Math.max(8, Math.round(h * scale));
@@ -264,7 +264,7 @@ function postDither(ctx, w, h, strength) {
 
 // `scale` is how big this render is against the configured canvas. Grain is the
 // one pass measured in device pixels, so without it the preview shows coarse
-// noise and the full-size export shows fine dust — different pictures.
+// noise and the full-size export shows fine dust, different pictures.
 function postGrain(ctx, w, h, cfg, scale) {
   const amt = cfg.grain;
   if (!(amt > 0)) return;
@@ -335,7 +335,7 @@ function drawOverlay(ctx, w, h, cfg) {
   const lines = [];
   if (cfg.label) String(cfg.label).split("\n").forEach(l => lines.push(l));
   if (cfg.hexList) {
-    if (lines.length) lines.push("—");
+    if (lines.length) lines.push("–");
     cfg.stops.forEach(s => lines.push(s.hex.toUpperCase()));
   }
   if (!lines.length) return;

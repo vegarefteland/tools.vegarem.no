@@ -1,4 +1,4 @@
-/* Pixel, Bitmap & ASCII — UI, sources, playback and export.
+/* Pixel, Bitmap & ASCII, UI, sources, playback and export.
  * The render engine lives in engine.js (Renderer, PALETTES, frameToSVG …). */
 "use strict";
 
@@ -62,7 +62,7 @@ const DEFAULTS = {
   // effects
   glow: 0, glowRadius: 8, scanlines: 0, scanlineSize: 2, crt: 0, chroma: 0, vignette: 0, grain: 0,
 };
-// Kept when a look is applied — they describe the shot, not the style.
+// Kept when a look is applied, they describe the shot, not the style.
 const FRAMING = ["outW", "aspect", "fit", "zoom", "panX", "panY", "flipH", "flipV"];
 
 const SETTINGS_KEY = "studio-pixel-settings";
@@ -456,7 +456,7 @@ function resetAll() {
   store("studio-pixel-look", "");
   renderer.resetTemporal();
   changed();
-  toast("Settings reset — framing kept");
+  toast("Settings reset, framing kept");
 }
 
 function randomize() {
@@ -502,7 +502,7 @@ function hslHex(h, s, l) {
   return "#" + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
 }
 
-// Web fonts only paint once loaded — and the glyph atlas is cached — so
+// Web fonts only paint once loaded, and the glyph atlas is cached, so
 // rebuild it when the chosen face arrives.
 const loadedFonts = new Set();
 function ensureFont() {
@@ -567,7 +567,7 @@ function loadVideo(file) {
     setSource("video", video, video.videoWidth, video.videoHeight,
       file.name + " · " + video.videoWidth + "×" + video.videoHeight + " · " + fmtTime(video.duration));
   };
-  video.onerror = () => toast("This browser can't decode that video — try the Converter to make an mp4 first");
+  video.onerror = () => toast("This browser can't decode that video, try the Converter to make an mp4 first");
 }
 
 function loadImage(file) {
@@ -748,7 +748,7 @@ function srcView() { return { el: src.el, width: src.kind === "cam" ? (cam.video
 
 function loop() { tick(); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
-// rAF stalls in background tabs and some embedded views — keep a slow heartbeat.
+// rAF stalls in background tabs and some embedded views, keep a slow heartbeat.
 setInterval(() => { if (performance.now() - lastTickAt > 120) tick(); }, 100);
 
 let scrubbing = false;
@@ -820,7 +820,7 @@ $("svgBtn").addEventListener("click", () => {
   const f = captureFrame(); if (!f) return;
   download(new Blob([frameToSVG(f.fd)], { type: "image/svg+xml" }), baseName() + ".svg");
   const fx = S.glow || S.scanlines || S.crt || S.chroma || S.vignette || S.grain || S.trails;
-  toast(fx ? "SVG saved — post effects are raster-only and left out" : "SVG saved");
+  toast(fx ? "SVG saved, post effects are raster-only and left out" : "SVG saved");
 });
 $("txtBtn").addEventListener("click", () => {
   const f = captureFrame(); if (!f) return;
@@ -867,7 +867,7 @@ $("rangeBtn").addEventListener("click", () => { $("exStart").value = 0; $("exEnd
 async function getFFmpeg() {
   if (ffmpegInstance) return ffmpegInstance;
   if (ffmpegLoading) return ffmpegLoading;
-  if (!window.__ffmpegModule) throw new Error("Export engine unavailable — reload the page, and try Chrome if it persists.");
+  if (!window.__ffmpegModule) throw new Error("Export engine unavailable: reload the page, and try Chrome if it persists.");
   ffmpegLoading = (async () => {
     const inst = new window.__ffmpegModule.FFmpeg();
     await inst.load({
@@ -904,7 +904,7 @@ $("renderBtn").addEventListener("click", () => {
 
 async function renderVideo() {
   if (!src.kind) return toast("Load a source first");
-  if (src.kind === "cam") return toast("Webcam is live — use Record live below");
+  if (src.kind === "cam") return toast("Webcam is live, use Record live below");
   const fps = parseInt($("exFps").value, 10);
   const scale = parseFloat($("exScale").value);
   const L = loopLength();
@@ -990,7 +990,7 @@ async function renderVideo() {
       try { await ffmpeg.deleteFile("pal.png"); } catch {}
     } else {
       let code = await ffmpeg.exec(build(true));
-      if (code !== 0 && audioIn) { note("Audio track failed — encoding without it…"); code = await ffmpeg.exec(build(false)); }
+      if (code !== 0 && audioIn) { note("Audio track failed, encoding without it…"); code = await ffmpeg.exec(build(false)); }
       if (code !== 0) throw new Error("encode failed (exit " + code + ")");
     }
     const data = await ffmpeg.readFile(outName);
@@ -999,7 +999,7 @@ async function renderVideo() {
     const mime = { mp4: "video/mp4", webm: "video/webm", gif: "image/gif" }[fmt];
     download(new Blob([data.buffer], { type: mime }), baseName() + "." + fmt);
     progress(1);
-    note("Done — " + N + " frames, " + (data.byteLength / 1048576).toFixed(1) + " MB.");
+    note("Done: " + N + " frames, " + (data.byteLength / 1048576).toFixed(1) + " MB.");
     toast(fmt.toUpperCase() + " saved");
   } catch (e) {
     if (cancelRender || e.message === "cancelled") note("Cancelled.");

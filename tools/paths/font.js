@@ -1,4 +1,4 @@
-/* Path View — a font parser, enough of one to get real outlines.
+/* Path View, a font parser, enough of one to get real outlines.
  *
  * The browser will happily draw text but will not tell you where the points
  * are, and that is the whole subject here. So this reads the font file: the
@@ -87,7 +87,7 @@ function tableDirectory(r, base) {
 function unwrapWOFF(bytes, inflate) {
   const r = new Reader(bytes);
   const sig = r.u32();
-  if (sig === 0x774F4632) throw new FontError("WOFF2 is not supported — use the .ttf, .otf or .woff.");
+  if (sig === 0x774F4632) throw new FontError("WOFF2 is not supported, use the .ttf, .otf or .woff.");
   if (sig !== 0x774F4646) return null;
   r.u32();                      // flavour
   r.u32();                      // length
@@ -228,7 +228,7 @@ function quadContour(pts) {
   const segs = [];
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, on: true, implied: true });
   // find a starting on-curve point, inventing one if the contour has none
-  // `ordered` is every point after the start and not the start itself — the
+  // `ordered` is every point after the start and not the start itself, the
   // close below brings the contour home exactly once. (Visiting the start
   // again here used to add a zero-length segment and a duplicate node.)
   const startIdx = pts.findIndex(p => p.on);
@@ -595,8 +595,7 @@ function runCharstring(r, cff, gid) {
 /* --------------------------------------------------------------- kerning */
 //
 // Two places keep it. GPOS is the modern one: a "kern" feature points at pair
-// adjustment lookups, which come either glyph by glyph (format 1) or by class —
-// every round left side against every diagonal right side (format 2). The old
+// adjustment lookups, which come either glyph by glyph (format 1) or by class, // every round left side against every diagonal right side (format 2). The old
 // `kern` table is a flat list of pairs. A browser uses GPOS when it has a kern
 // feature and falls back to the old table otherwise, and so does this.
 
@@ -648,7 +647,7 @@ function readValue(r, fmt) {
 function parseGPOSKern(r, off) {
   r.seek(off);
   r.u16(); r.u16();
-  r.u16();                                    // script list — kern applies to all scripts here
+  r.u16();                                    // script list, kern applies to all scripts here
   const featOff = off + r.u16(), lookOff = off + r.u16();
   r.seek(featOff);
   const fc = r.u16();
@@ -749,7 +748,7 @@ function gposPair(r, lookups, left, right) {
 }
 
 // The old table comes in two flavours (Microsoft and Apple headers) and two
-// useful formats: 0 is a flat list of pairs, 2 is a class grid — each glyph
+// useful formats: 0 is a flat list of pairs, 2 is a class grid, each glyph
 // belongs to a left class and a right class, and the value sits where the row
 // and column meet. Returns a lookup function, or null if nothing applies.
 function parseKernTable(r, off) {
@@ -778,7 +777,7 @@ function parseKernTable(r, off) {
         pairs.set(key, (pairs.get(key) || 0) + r.i16());
       }
     } else if (horizontal && format === 2) {
-      r.u16();                                            // row width — implied by the class values
+      r.u16();                                            // row width, implied by the class values
       const leftOff = r.u16(), rightOff = r.u16(), arrayOff = r.u16();
       const classTable = o => {
         r.seek(start + o);
@@ -847,7 +846,7 @@ class Font {
       }
     }
     const t = this.tables, r = this.r;
-    if (!t.head) throw new FontError("The font has no head table — the file may be damaged.");
+    if (!t.head) throw new FontError("The font has no head table, the file may be damaged.");
     r.seek(t.head.off + 18);
     this.unitsPerEm = r.u16() || 1000;
     r.seek(t.head.off + 50);
@@ -882,7 +881,7 @@ class Font {
     this.kernSource = this.gposKern ? "GPOS" : this.kernPairs ? "kern table" : null;
     this.cff = t["CFF "] ? parseCFF(r, t["CFF "].off, t["CFF "].len) : null;
     this.kind = this.cff ? "PostScript (cubic)" : "TrueType (quadratic)";
-    if (!this.cff && !t.glyf) throw new FontError("No outlines found — this may be a bitmap or colour font.");
+    if (!this.cff && !t.glyf) throw new FontError("No outlines found, this may be a bitmap or colour font.");
     this.name = this.readName() || "Untitled";
   }
 
@@ -940,9 +939,9 @@ class Font {
   }
 
   // Horizontal adjustment for a pair of glyphs, in font units.
-  //   adv  — added to the first glyph's advance (what "kerning" usually means)
-  //   pla2 — shifts the second glyph without moving what follows
-  //   adv2 — added to the second glyph's advance
+  //   adv, added to the first glyph's advance (what "kerning" usually means)
+  //   pla2, shifts the second glyph without moving what follows
+  //   adv2, added to the second glyph's advance
   kernPair(left, right) {
     if (this.gposKern) return gposPair(this.r, this.gposKern, left, right);
     if (this.kernPairs) {

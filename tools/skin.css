@@ -1,16 +1,16 @@
 /* ================================================================
-   Studio — shared design system, part 2 of 2: component skin.
+   Studio, shared design system, part 2 of 2: component skin.
 
    Loaded LAST in every tool (after the tool's own <style>), so the look
    of the shared vocabulary is decided once, here, in vegarem.no's terms:
 
-     · flat — surfaces read by tone, not outline or shadow
-     · ⅓ rounding — every pill/button radius is a third of its height
+     · flat, surfaces read by tone, not outline or shadow
+     · ⅓ rounding, every pill/button radius is a third of its height
      · Geist 300/400/600, no uppercase tracking-labels
      · hover fades (opacity), it never lifts
 
    Every selector starts with :root so it outranks a tool's own rule of
-   the same shape. Only LOOK is set here — colour, tone, radius, type
+   the same shape. Only LOOK is set here, colour, tone, radius, type
    treatment. Size and layout stay with each tool.
    ================================================================ */
 
@@ -35,7 +35,7 @@
 :root .page-head h1 { font-weight: 400; letter-spacing: -0.02em; }
 :root .page-head p { color: var(--muted); }
 
-/* ─── Labels: no uppercase micro-type — quiet sentence case ───── */
+/* ─── Labels: no uppercase micro-type, quiet sentence case ───── */
 :root :is(.h, .section-label, .row-label, .field label, .export-field label,
           .preset-group-label, .arrange-preview-label, .cover-section-header,
           .desc-preview-header span, details.sec > summary, .stat > span) {
@@ -48,7 +48,7 @@
 :root details.sec > summary:hover { color: var(--fg); }
 :root .field label .val { color: var(--fg); font-weight: 400; }
 
-/* Section heading pill — the site's .section-tag, for new work. */
+/* Section heading pill, the site's .section-tag, for new work. */
 .section-tag {
   display: inline-flex;
   align-items: center;
@@ -91,7 +91,7 @@
 :root :is(.pill-btn-danger, .btn-danger):hover { background: rgba(217, 83, 79, 0.1); }
 :root :is(.pill-btn, .btn):disabled { opacity: 0.4; cursor: default; }
 
-/* Icon buttons — the site's .icon-btn: square, ⅓ corners. */
+/* Icon buttons, the site's .icon-btn: square, ⅓ corners. */
 :root .icon-btn {
   border: 0;
   border-radius: var(--r-pill);
@@ -165,7 +165,7 @@ html[data-theme="dark"] :is(.seg, .tabs, .layout-toggle) button.active { backgro
 :root input[type="color"] { border: 0; border-radius: 8px; background: var(--tone); }
 :root input[type="color"]::-webkit-color-swatch { border-radius: 6px; }
 
-/* Sliders — the site's volume slider: hairline rail, round ink thumb. */
+/* Sliders, the site's volume slider: hairline rail, round ink thumb. */
 :root input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -183,7 +183,7 @@ html[data-theme="dark"] :is(.seg, .tabs, .layout-toggle) button.active { backgro
 :root input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--track); }
 :root input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--fg); }
 
-/* Switches — ⅓ corners on the track and the knob, like every pill. */
+/* Switches, ⅓ corners on the track and the knob, like every pill. */
 :root .switch b { border-radius: 6px; background: var(--tone-strong); }
 :root .switch b::after { border-radius: 4px; background: var(--bg); }
 :root .switch input:checked + b { background: var(--fg); }
@@ -211,7 +211,7 @@ html[data-theme="dark"] :is(.seg, .tabs, .layout-toggle) button.active { backgro
 :root :is(kbd, code) { border-color: transparent; border-radius: 5px; }
 :root kbd { background: var(--tone); }
 
-/* ─── Toast — a glass pill, like the nav ─────────────────────── */
+/* ─── Toast, a glass pill, like the nav ─────────────────────── */
 :root .toast {
   background: var(--pill-bg);
   color: var(--pill-ink);
