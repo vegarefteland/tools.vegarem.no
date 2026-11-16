@@ -8,10 +8,10 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 /* ================================================================ chrome */
-const NAV = [["/", "Tools"], ["/tools/layout/index.html", "Layout"],
-  ["/tools/converter/index.html", "Converter"],
-  ["/tools/animator/index.html", "Animator"], ["/tools/pixel/index.html", "Pixel"], ["/tools/gradient/index.html", "Gradient"],
-  ["/tools/paths/index.html", "Paths"]];
+const NAV = [["/", "Tools"], ["/tools/layout/", "Layout"],
+  ["/tools/converter/", "Converter"],
+  ["/tools/animator/", "Animator"], ["/tools/pixel/", "Pixel"], ["/tools/gradient/", "Gradient"],
+  ["/tools/paths/", "Paths"]];
 $("#nav").innerHTML = NAV.map(([h, l]) =>
   '<a href="' + h + '"' + (l === "Paths" ? ' class="active"' : "") + ">" + l + "</a>")
   .join('<span class="sep">&middot;</span>');
